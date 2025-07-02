@@ -83,7 +83,7 @@ func (app *App) Run() {
 
 func (app *App) Inspect() {
 	cargo.Inspect(app.container)
-	fmt.Println(app.config.Value())
+	//fmt.Println(app.config.Value())
 }
 
 func Handler(gen UniqueIDGenerator, ctn *cargo.Container, ctx context.Context) http.Handler {
