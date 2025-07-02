@@ -15,23 +15,29 @@ import (
 
 type App struct {
 	server    *http.Server
+	config    ConfigProvider[AppConfig]
 	container *cargo.Container
 	context   context.Context
 	generator UniqueIDGenerator
 }
 
 func New() *App {
-	c := cargo.New()
-	c.Scopes.Create(ScopeApplicationKey)
-	cargo.RegisterKV[Logger](c, NewFastLoggerWithDefaults)
+	ctx := context.Background()
+	cfg := NewAppConfig()
+	ctn := cargo.New()
+	ctn.Scopes.Create(ScopeApplicationKey)
+	cargo.RegisterKV[ConfigProvider[AppConfig]](ctn, func(cargo.BuilderContext) *Config[AppConfig] { return cfg })
+	cargo.RegisterKV[Logger](ctn, func(c cargo.BuilderContext) *FastLogger { return NewFastLoggerWithDefaults(NewBuilderContext(c, ctn)) })
+	gen := NewSequenceIDGenerator()
 	return &App{
-		container: c,
 		server: &http.Server{
-			Addr:    ":8080",
-			Handler: nil,
+			Addr:    fmt.Sprintf("%s:%d", cfg.Value().Server.Host, cfg.Value().Server.Port),
+			Handler: Handler(gen, ctn, ctx),
 		},
-		context:   context.Background(),
-		generator: NewSequenceIDGenerator(),
+		config:    cfg,
+		container: ctn,
+		context:   ctx,
+		generator: gen,
 	}
 }
 
@@ -52,10 +58,9 @@ func (app *App) WithIDGenerator(generator UniqueIDGenerator) *App {
 }
 
 func (app *App) Run() {
-	cargo.Inspect(app.container)
+	app.Inspect()
 
 	server := app.server
-	server.Handler = Handler(app)
 	go func() {
 		fmt.Println("server start")
 		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
@@ -76,20 +81,25 @@ func (app *App) Run() {
 	fmt.Println("server stop")
 }
 
-func Handler(app *App) http.Handler {
+func (app *App) Inspect() {
+	cargo.Inspect(app.container)
+	fmt.Println(app.config.Value())
+}
+
+func Handler(gen UniqueIDGenerator, ctn *cargo.Container, ctx context.Context) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// create unique request ID
-		id := app.generator.Next()
+		id := gen.Next()
 
 		// create unique scope for the request
 		scope := fmt.Sprintf(ScopeRequestKeyFormat, id)
-		app.container.Scopes.Create(scope)
+		ctn.Scopes.Create(scope)
 		defer func() {
-			app.container.Scopes.Delete(scope)
+			ctn.Scopes.Delete(scope)
 		}()
 
 		// create a new builder context
-		ctx := NewBuilderContext(context.WithValue(app.context, CtxRequestId, id), app.container)
+		ctx := NewBuilderContext(context.WithValue(ctx, CtxRequestId, id), ctn)
 
 		// build the controllers
 		mux := controllers(ctx, scope)

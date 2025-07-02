@@ -3,8 +3,6 @@ package gofast
 import (
 	"log/slog"
 	"os"
-
-	"github.com/ugozlave/cargo"
 )
 
 const (
@@ -34,7 +32,7 @@ type FastLogger struct {
 	*slog.Logger
 }
 
-func NewFastLogger(ctx cargo.BuilderContext) *FastLogger {
+func NewFastLogger(ctx *BuilderContext) *FastLogger {
 	handler := slog.NewTextHandler(
 		os.Stdout,
 		&slog.HandlerOptions{
@@ -75,11 +73,15 @@ func (l *FastLogger) WithGroup(name string) Logger {
 	}
 }
 
-func NewFastLoggerWithDefaults(ctx cargo.BuilderContext) *FastLogger {
-	application, _ := os.Executable()
+func NewFastLoggerWithDefaults(ctx *BuilderContext) *FastLogger {
+	config := Get[ConfigProvider[AppConfig]](ctx, Singleton)
+	application := config.Value().App.Name
+	if application == "" {
+		application, _ = os.Executable()
+	}
 	return NewFastLogger(ctx).
 		WithApplication(application).
-		WithEnvironment("development")
+		WithEnvironment(config.Value().Env)
 }
 
 func (l *FastLogger) WithApplication(v string) *FastLogger {

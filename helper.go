@@ -26,17 +26,22 @@ func Register[K any, V any](app *App, builder func(*BuilderContext) V) {
 }
 
 func Get[T any](ctx *BuilderContext, lt Lifetime) T {
+	var v T
 	switch lt {
 	case Singleton:
-		return cargo.MustGet[T](ctx.C(), ScopeApplicationKey, ctx)
+		v = cargo.MustGet[T](ctx.C(), ScopeApplicationKey, ctx)
 	case Scoped:
 		scope := ctx.RequestId()
-		return cargo.MustGet[T](ctx.C(), fmt.Sprintf(ScopeRequestKeyFormat, scope), ctx)
+		v = cargo.MustGet[T](ctx.C(), fmt.Sprintf(ScopeRequestKeyFormat, scope), ctx)
 	case Transient:
-		return cargo.Build[T](ctx.C(), ctx)
+		v = cargo.Build[T](ctx.C(), ctx)
 	default:
-		return cargo.MustGet[T](ctx.C(), ScopeApplicationKey, ctx)
+		v = cargo.MustGet[T](ctx.C(), ScopeApplicationKey, ctx)
 	}
+	//if any(v) == nil {
+	//	panic(fmt.Sprintf("type %T is nil", new(T)))
+	//}
+	return v
 }
 
 func Add[C Controller](app *App, builder func(ctx *BuilderContext) C) {
