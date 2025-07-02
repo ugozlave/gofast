@@ -14,7 +14,7 @@ import (
 )
 
 type App struct {
-	*http.Server
+	server    *http.Server
 	container *cargo.Container
 	context   context.Context
 	generator UniqueIDGenerator
@@ -23,10 +23,10 @@ type App struct {
 func New() *App {
 	c := cargo.New()
 	c.Scopes.Create(ScopeApplicationKey)
-	cargo.RegisterKV[Logger](c, NewFastLogger)
+	cargo.RegisterKV[Logger](c, NewFastLoggerWithDefaults)
 	return &App{
 		container: c,
-		Server: &http.Server{
+		server: &http.Server{
 			Addr:    ":8080",
 			Handler: nil,
 		},
@@ -35,17 +35,30 @@ func New() *App {
 	}
 }
 
-func (app *App) Run() {
+func (app *App) WithContext(ctx context.Context) *App {
+	if ctx == nil {
+		panic("context cannot be nil")
+	}
+	app.context = ctx
+	return app
+}
 
+func (app *App) WithIDGenerator(generator UniqueIDGenerator) *App {
+	if generator == nil {
+		panic("ID generator cannot be nil")
+	}
+	app.generator = generator
+	return app
+}
+
+func (app *App) Run() {
 	cargo.Inspect(app.container)
 
-	app.Handler = Handler(app)
-
-	logger := TypedLogger[App](NewBuilderContext(app.context, app.container), Transient)
-
+	server := app.server
+	server.Handler = Handler(app)
 	go func() {
-		logger.Inf("server start")
-		if err := app.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+		fmt.Println("server start")
+		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			panic(err)
 		}
 	}()
@@ -53,16 +66,14 @@ func (app *App) Run() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
-
 	fmt.Println()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
-	if err := app.Shutdown(ctx); err != nil {
-		logger.Err("server shutdown failed", "error", err.Error())
+	if err := server.Shutdown(ctx); err != nil {
+		fmt.Println("server shutdown failed:", err.Error())
 	}
-
+	fmt.Println("server stop")
 }
 
 func Handler(app *App) http.Handler {

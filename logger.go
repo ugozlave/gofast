@@ -8,15 +8,17 @@ import (
 )
 
 const (
-	LogService   string = "service"
-	LogRequestId string = "requestId"
-	LogHttp      string = "http"
-	LogMethod    string = "method"
-	LogHost      string = "host"
-	LogUrl       string = "url"
-	LogRemote    string = "remote"
-	LogAgent     string = "agent"
-	LogStatus    string = "status"
+	LogApplication string = "application"
+	LogEnvironment string = "environment"
+	LogService     string = "service"
+	LogRequestId   string = "requestId"
+	LogHttp        string = "http"
+	LogMethod      string = "method"
+	LogHost        string = "host"
+	LogUrl         string = "url"
+	LogRemote      string = "remote"
+	LogAgent       string = "agent"
+	LogStatus      string = "status"
 )
 
 type Logger interface {
@@ -39,11 +41,7 @@ func NewFastLogger(ctx cargo.BuilderContext) *FastLogger {
 			Level: slog.LevelDebug,
 		},
 	)
-	logger := slog.New(handler).
-		With(
-			slog.String("application", "example"),
-			slog.String("environment", "development"),
-		)
+	logger := slog.New(handler)
 	return &FastLogger{
 		Logger: logger,
 	}
@@ -74,5 +72,24 @@ func (l *FastLogger) With(args ...any) Logger {
 func (l *FastLogger) WithGroup(name string) Logger {
 	return &FastLogger{
 		Logger: l.Logger.WithGroup(name),
+	}
+}
+
+func NewFastLoggerWithDefaults(ctx cargo.BuilderContext) *FastLogger {
+	application, _ := os.Executable()
+	return NewFastLogger(ctx).
+		WithApplication(application).
+		WithEnvironment("development")
+}
+
+func (l *FastLogger) WithApplication(v string) *FastLogger {
+	return &FastLogger{
+		Logger: l.Logger.With(slog.String("application", v)),
+	}
+}
+
+func (l *FastLogger) WithEnvironment(v string) *FastLogger {
+	return &FastLogger{
+		Logger: l.Logger.With(slog.String("environment", v)),
 	}
 }
