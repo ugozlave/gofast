@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"reflect"
 	"time"
 
 	"github.com/ugozlave/cargo"
@@ -32,7 +31,7 @@ func New() *App {
 	return &App{
 		server: &http.Server{
 			Addr:    fmt.Sprintf("%s:%d", cfg.Value().Server.Host, cfg.Value().Server.Port),
-			Handler: Handler(gen, ctn, ctx),
+			Handler: nil,
 		},
 		config:    cfg,
 		container: ctn,
@@ -58,9 +57,12 @@ func (app *App) WithIDGenerator(generator UniqueIDGenerator) *App {
 }
 
 func (app *App) Run() {
-	app.Inspect()
+	if DEBUG {
+		app.Inspect()
+	}
 
 	server := app.server
+	server.Handler = NewHttpInjector(app.generator, app.container, app.context).Handler()
 	go func() {
 		fmt.Println("server start")
 		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
@@ -83,53 +85,7 @@ func (app *App) Run() {
 
 func (app *App) Inspect() {
 	cargo.Inspect(app.container)
-	//fmt.Println(app.config.Value())
+	fmt.Println(app.config.Value())
 }
 
-func Handler(gen UniqueIDGenerator, ctn *cargo.Container, ctx context.Context) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// create unique request ID
-		id := gen.Next()
-
-		// create unique scope for the request
-		scope := fmt.Sprintf(ScopeRequestKeyFormat, id)
-		ctn.Scopes.Create(scope)
-		defer func() {
-			ctn.Scopes.Delete(scope)
-		}()
-
-		// create a new builder context
-		ctx := NewBuilderContext(context.WithValue(ctx, CtxRequestId, id), ctn)
-
-		// build the controllers
-		mux := controllers(ctx, scope)
-
-		// apply middlewares
-		mux = middlewares(ctx, scope, mux)
-
-		mux.ServeHTTP(w, r)
-	})
-}
-
-func controllers(ctx cargo.BuilderContext, scope string) http.Handler {
-	var mux *http.ServeMux = http.NewServeMux()
-	container := ctx.C()
-	for t := range container.Services {
-		if t.Implements(reflect.TypeOf((*Controller)(nil)).Elem()) {
-			ctrl := container.Get(t, scope, ctx).(Controller)
-			mux.Handle(ctrl.Prefix()+"/", http.StripPrefix(ctrl.Prefix(), ctrl.Routes()))
-		}
-	}
-	return mux
-}
-
-func middlewares(ctx cargo.BuilderContext, scope string, ctrl http.Handler) http.Handler {
-	container := ctx.C()
-	for t := range container.Services {
-		if t.Implements(reflect.TypeOf((*Middleware)(nil)).Elem()) {
-			mw := container.Get(t, scope, ctx).(Middleware)
-			ctrl = mw.Handle(ctrl)
-		}
-	}
-	return ctrl
-}
+var DEBUG bool = true

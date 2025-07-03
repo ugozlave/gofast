@@ -34,13 +34,29 @@ func Get[T any](ctx *BuilderContext, lt Lifetime) T {
 		scope := ctx.RequestId()
 		v = cargo.MustGet[T](ctx.C(), fmt.Sprintf(ScopeRequestKeyFormat, scope), ctx)
 	case Transient:
-		v = cargo.Build[T](ctx.C(), ctx)
+		v = cargo.MustBuild[T](ctx.C(), ctx)
 	default:
 		v = cargo.MustGet[T](ctx.C(), ScopeApplicationKey, ctx)
 	}
-	//if any(v) == nil {
-	//	panic(fmt.Sprintf("type %T is nil", new(T)))
-	//}
+	return v
+}
+
+func MustGet[T any](ctx *BuilderContext, lt Lifetime) T {
+	var v T
+	switch lt {
+	case Singleton:
+		v = cargo.MustGet[T](ctx.C(), ScopeApplicationKey, ctx)
+	case Scoped:
+		scope := ctx.RequestId()
+		v = cargo.MustGet[T](ctx.C(), fmt.Sprintf(ScopeRequestKeyFormat, scope), ctx)
+	case Transient:
+		v = cargo.MustBuild[T](ctx.C(), ctx)
+	default:
+		v = cargo.MustGet[T](ctx.C(), ScopeApplicationKey, ctx)
+	}
+	if any(v) == nil {
+		panic(fmt.Sprintf("type %T is nil", new(T)))
+	}
 	return v
 }
 
@@ -52,8 +68,22 @@ func Use[M Middleware](app *App, builder func(ctx *BuilderContext) M) {
 	Register[M](app, builder)
 }
 
-func TypedLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
+func Log[L Logger](app *App, builder func(ctx *BuilderContext) L) {
+	Register[Logger](app, builder)
+}
+
+func GetTypedLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
 	logger := Get[Logger](ctx, Singleton).With(LogService, cargo.From[S]())
+	switch lt {
+	case Scoped:
+		return logger.With(LogRequestId, ctx.RequestId())
+	default:
+		return logger
+	}
+}
+
+func MustGetTypedLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
+	logger := MustGet[Logger](ctx, Singleton).With(LogService, cargo.From[S]())
 	switch lt {
 	case Scoped:
 		return logger.With(LogRequestId, ctx.RequestId())

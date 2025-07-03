@@ -4,17 +4,18 @@ import (
 	"net/http"
 
 	fast "github.com/ugozlave/gofast"
+	"github.com/ugozlave/gofast/faster"
 )
 
 func main() {
 	app := fast.New()
 
 	// controllers
-	fast.Add(app, fast.NewHealthController)
+	fast.Add(app, faster.NewHealthController)
 	fast.Add(app, NewMyController)
 
 	// middleware
-	fast.Use(app, fast.NewLogMiddleware)
+	fast.Use(app, faster.NewLogMiddleware)
 
 	// services
 	fast.Register[Service](app, NewMyService)
@@ -58,7 +59,7 @@ type MyService struct {
 
 func NewMyService(ctx *fast.BuilderContext) *MyService {
 	return &MyService{
-		logger: fast.TypedLogger[MyService](ctx, fast.Scoped),
+		logger: fast.GetTypedLogger[MyService](ctx, fast.Scoped),
 	}
 }
 

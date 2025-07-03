@@ -73,8 +73,26 @@ func (l *FastLogger) WithGroup(name string) Logger {
 	}
 }
 
+func (l *FastLogger) WithApplication(v string) *FastLogger {
+	return &FastLogger{
+		Logger: l.Logger.With(slog.String(LogApplication, v)),
+	}
+}
+
+func (l *FastLogger) WithEnvironment(v string) *FastLogger {
+	return &FastLogger{
+		Logger: l.Logger.With(slog.String(LogEnvironment, v)),
+	}
+}
+
+func (l *FastLogger) WithService(v string) *FastLogger {
+	return &FastLogger{
+		Logger: l.Logger.With(slog.String(LogService, v)),
+	}
+}
+
 func NewFastLoggerWithDefaults(ctx *BuilderContext) *FastLogger {
-	config := Get[ConfigProvider[AppConfig]](ctx, Singleton)
+	config := MustGet[ConfigProvider[AppConfig]](ctx, Singleton)
 	application := config.Value().App.Name
 	if application == "" {
 		application, _ = os.Executable()
@@ -82,16 +100,4 @@ func NewFastLoggerWithDefaults(ctx *BuilderContext) *FastLogger {
 	return NewFastLogger(ctx).
 		WithApplication(application).
 		WithEnvironment(config.Value().Env)
-}
-
-func (l *FastLogger) WithApplication(v string) *FastLogger {
-	return &FastLogger{
-		Logger: l.Logger.With(slog.String("application", v)),
-	}
-}
-
-func (l *FastLogger) WithEnvironment(v string) *FastLogger {
-	return &FastLogger{
-		Logger: l.Logger.With(slog.String("environment", v)),
-	}
 }
