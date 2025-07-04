@@ -1,6 +1,9 @@
 package gofast
 
-import "fmt"
+import (
+	"fmt"
+	"sync/atomic"
+)
 
 type UniqueIDGenerator interface {
 	Next() string
@@ -15,6 +18,6 @@ func NewSequenceIDGenerator() *SequenceIDGenerator {
 }
 
 func (g *SequenceIDGenerator) Next() string {
-	g.current++
-	return fmt.Sprintf("%d", g.current)
+	id := atomic.AddInt64(&g.current, 1)
+	return fmt.Sprintf("%d", id)
 }

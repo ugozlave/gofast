@@ -72,7 +72,11 @@ func Log[L Logger](app *App, builder func(ctx *BuilderContext) L) {
 	Register[Logger](app, builder)
 }
 
-func GetTypedLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
+func Cfg[C any](app *App, builder func(ctx *BuilderContext) *Config[C]) {
+	Register[ConfigProvider[C]](app, builder)
+}
+
+func GetLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
 	logger := Get[Logger](ctx, Singleton).With(LogService, cargo.From[S]())
 	switch lt {
 	case Scoped:
@@ -82,7 +86,7 @@ func GetTypedLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
 	}
 }
 
-func MustGetTypedLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
+func MustGetLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
 	logger := MustGet[Logger](ctx, Singleton).With(LogService, cargo.From[S]())
 	switch lt {
 	case Scoped:
@@ -90,4 +94,12 @@ func MustGetTypedLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
 	default:
 		return logger
 	}
+}
+
+func GetConfig[C any](ctx *BuilderContext, lt Lifetime) ConfigProvider[C] {
+	return Get[ConfigProvider[C]](ctx, lt)
+}
+
+func MustGetConfig[C any](ctx *BuilderContext, lt Lifetime) ConfigProvider[C] {
+	return MustGet[ConfigProvider[C]](ctx, lt)
 }

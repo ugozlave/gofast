@@ -92,7 +92,7 @@ func (l *FastLogger) WithService(v string) *FastLogger {
 }
 
 func NewFastLoggerWithDefaults(ctx *BuilderContext) *FastLogger {
-	config := MustGet[ConfigProvider[AppConfig]](ctx, Singleton)
+	config := MustGetConfig[AppConfig](ctx, Singleton)
 	application := config.Value().App.Name
 	if application == "" {
 		application, _ = os.Executable()

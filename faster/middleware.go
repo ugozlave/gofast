@@ -16,7 +16,7 @@ type LogMiddleware struct {
 
 func NewLogMiddleware(ctx *gofast.BuilderContext) *LogMiddleware {
 	return &LogMiddleware{
-		logger: gofast.MustGetTypedLogger[LogMiddleware](ctx, gofast.Scoped),
+		logger: gofast.MustGetLogger[LogMiddleware](ctx, gofast.Scoped),
 	}
 }
 
