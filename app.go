@@ -24,7 +24,7 @@ func New() *App {
 	ctx := context.Background()
 	cfg := NewAppConfig()
 	ctn := cargo.New()
-	ctn.Scopes.Create(ScopeApplicationKey)
+	ctn.CreateScope(ScopeApplicationKey)
 	cargo.RegisterKV[ConfigProvider[AppConfig]](ctn, func(cargo.BuilderContext) *Config[AppConfig] { return cfg })
 	cargo.RegisterKV[Logger](ctn, func(c cargo.BuilderContext) *FastLogger { return NewFastLoggerWithDefaults(NewBuilderContext(c, ctn)) })
 	gen := NewSequenceIDGenerator()
@@ -38,14 +38,6 @@ func New() *App {
 		context:   ctx,
 		generator: gen,
 	}
-}
-
-func (app *App) WithContext(ctx context.Context) *App {
-	if ctx == nil {
-		panic("context cannot be nil")
-	}
-	app.context = ctx
-	return app
 }
 
 func (app *App) WithIDGenerator(generator UniqueIDGenerator) *App {

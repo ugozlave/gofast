@@ -14,8 +14,24 @@ type Config[T any] struct {
 }
 
 func NewConfig[T any](v T) *Config[T] {
-	data, _ := os.ReadFile("config.json")
-	_ = json.Unmarshal(data, &v)
+	base := struct {
+		Env string `json:"Environment"`
+	}{}
+	data, err := os.ReadFile("config.json")
+	if err == nil {
+		_ = json.Unmarshal(data, &base)
+		_ = json.Unmarshal(data, &v)
+	}
+	env, ok := os.LookupEnv("ENVIRONMENT")
+	if ok {
+		base.Env = env
+	}
+	if base.Env != "" {
+		data, err = os.ReadFile("config." + base.Env + ".json")
+		if err == nil {
+			_ = json.Unmarshal(data, &v)
+		}
+	}
 	return &Config[T]{value: v}
 }
 

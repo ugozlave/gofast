@@ -9,7 +9,8 @@ import (
 type ContextKey string
 
 const (
-	CtxRequestId ContextKey = "RequestId"
+	CtxEnvironment ContextKey = "Environment"
+	CtxRequestId   ContextKey = "RequestId"
 )
 
 type BuilderContext struct {
@@ -22,6 +23,14 @@ func NewBuilderContext(ctx context.Context, container *cargo.Container) *Builder
 		Context:   ctx,
 		container: container,
 	}
+}
+
+func (c *BuilderContext) Environment() string {
+	v, ok := c.Value(CtxEnvironment).(string)
+	if !ok {
+		return ""
+	}
+	return v
 }
 
 func (c *BuilderContext) RequestId() string {

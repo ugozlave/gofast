@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"reflect"
 
 	"github.com/ugozlave/cargo"
 )
@@ -34,9 +33,9 @@ func (inj *HttpInjector) Handler() http.Handler {
 
 		// create unique scope for the request
 		scope := fmt.Sprintf(ScopeRequestKeyFormat, id)
-		inj.ctn.Scopes.Create(scope)
+		inj.ctn.CreateScope(scope)
 		defer func() {
-			inj.ctn.Scopes.Delete(scope)
+			inj.ctn.DeleteScope(scope)
 		}()
 
 		// create a new builder context
@@ -56,22 +55,16 @@ func (inj *HttpInjector) Handler() http.Handler {
 
 func (inj *HttpInjector) Controllers(ctx cargo.BuilderContext, scope string) http.Handler {
 	mux := http.NewServeMux()
-	for t := range inj.ctn.Services {
-		if t.Implements(reflect.TypeOf((*Controller)(nil)).Elem()) {
-			ctrl := inj.ctn.Get(t, scope, ctx).(Controller)
-			mux.Handle(ctrl.Prefix()+"/", http.StripPrefix(ctrl.Prefix(), ctrl.Routes()))
-		}
+	for _, ctrl := range cargo.All[Controller](inj.ctn, scope, ctx) {
+		mux.Handle(ctrl.Prefix()+"/", http.StripPrefix(ctrl.Prefix(), ctrl.Routes()))
 	}
 	return mux
 }
 
 func (inj *HttpInjector) Middlewares(ctx cargo.BuilderContext, scope string) func(http.Handler) http.Handler {
 	return func(mux http.Handler) http.Handler {
-		for t := range inj.ctn.Services {
-			if t.Implements(reflect.TypeOf((*Middleware)(nil)).Elem()) {
-				mid := inj.ctn.Get(t, scope, ctx).(Middleware)
-				mux = mid.Handle(mux)
-			}
+		for _, mid := range cargo.All[Middleware](inj.ctn, scope, ctx) {
+			mux = mid.Handle(mux)
 		}
 		return mux
 	}
