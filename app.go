@@ -21,7 +21,7 @@ type App struct {
 }
 
 func New(cfg ConfigProvider[AppConfig]) *App {
-	ctx := context.Background()
+	ctx := context.WithValue(context.Background(), CtxEnvironment, cfg.Value().Env)
 	ctn := cargo.New()
 	ctn.CreateScope(ScopeApplicationKey)
 	cargo.RegisterKV[ConfigProvider[AppConfig]](ctn, func(cargo.BuilderContext) ConfigProvider[AppConfig] { return cfg })
