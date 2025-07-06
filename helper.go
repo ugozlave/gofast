@@ -60,24 +60,24 @@ func MustGet[T any](ctx *BuilderContext, lt Lifetime) T {
 	return v
 }
 
-func Add[C Controller](app *App, builder func(ctx *BuilderContext) C) {
-	Register[C](app, builder)
+func Add[C Controller](app *App, builder func(*BuilderContext) C) {
+	Register[Controller](app, builder)
 }
 
-func Use[M Middleware](app *App, builder func(ctx *BuilderContext) M) {
-	Register[M](app, builder)
+func Use[M Middleware](app *App, builder func(*BuilderContext) M) {
+	Register[Middleware](app, builder)
 }
 
-func Log[L Logger](app *App, builder func(ctx *BuilderContext) L) {
+func Log[L Logger](app *App, builder func(*BuilderContext) L) {
 	Register[Logger](app, builder)
 }
 
-func Cfg[C any](app *App, builder func(ctx *BuilderContext) *Config[C]) {
-	Register[ConfigProvider[C]](app, builder)
+func Cfg[C ConfigProvider[T], T any](app *App, builder func(*BuilderContext) C) {
+	Register[ConfigProvider[T]](app, builder)
 }
 
 func GetLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
-	logger := Get[Logger](ctx, Singleton).With(LogService, cargo.From[S]())
+	logger := Get[Logger](ctx, lt).With(LogService, cargo.From[S]())
 	switch lt {
 	case Scoped:
 		return logger.With(LogRequestId, ctx.RequestId())
@@ -87,7 +87,7 @@ func GetLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
 }
 
 func MustGetLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
-	logger := MustGet[Logger](ctx, Singleton).With(LogService, cargo.From[S]())
+	logger := MustGet[Logger](ctx, lt).With(LogService, cargo.From[S]())
 	switch lt {
 	case Scoped:
 		return logger.With(LogRequestId, ctx.RequestId())

@@ -20,13 +20,11 @@ type App struct {
 	generator UniqueIDGenerator
 }
 
-func New() *App {
-	ctx := context.Background()
-	cfg := NewAppConfig()
+func New(cfg ConfigProvider[AppConfig]) *App {
+	ctx := context.WithValue(context.Background(), CtxEnvironment, cfg.Value().Env)
 	ctn := cargo.New()
-	ctn.Scopes.Create(ScopeApplicationKey)
-	cargo.RegisterKV[ConfigProvider[AppConfig]](ctn, func(cargo.BuilderContext) *Config[AppConfig] { return cfg })
-	cargo.RegisterKV[Logger](ctn, func(c cargo.BuilderContext) *FastLogger { return NewFastLoggerWithDefaults(NewBuilderContext(c, ctn)) })
+	ctn.CreateScope(ScopeApplicationKey)
+	cargo.RegisterKV[ConfigProvider[AppConfig]](ctn, func(cargo.BuilderContext) ConfigProvider[AppConfig] { return cfg })
 	gen := NewSequenceIDGenerator()
 	return &App{
 		server: &http.Server{
@@ -38,14 +36,6 @@ func New() *App {
 		context:   ctx,
 		generator: gen,
 	}
-}
-
-func (app *App) WithContext(ctx context.Context) *App {
-	if ctx == nil {
-		panic("context cannot be nil")
-	}
-	app.context = ctx
-	return app
 }
 
 func (app *App) WithIDGenerator(generator UniqueIDGenerator) *App {
@@ -85,7 +75,10 @@ func (app *App) Run() {
 
 func (app *App) Inspect() {
 	cargo.Inspect(app.container)
-	fmt.Println(app.config.Value())
+	fmt.Println()
+	fmt.Println("Config:")
+	fmt.Printf(".   %v\n", app.config.Value())
+	fmt.Println()
 }
 
 var DEBUG bool = true
