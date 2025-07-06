@@ -20,13 +20,11 @@ type App struct {
 	generator UniqueIDGenerator
 }
 
-func New() *App {
+func New(cfg ConfigProvider[AppConfig]) *App {
 	ctx := context.Background()
-	cfg := NewAppConfig()
 	ctn := cargo.New()
 	ctn.CreateScope(ScopeApplicationKey)
-	cargo.RegisterKV[ConfigProvider[AppConfig]](ctn, func(cargo.BuilderContext) *Config[AppConfig] { return cfg })
-	cargo.RegisterKV[Logger](ctn, func(c cargo.BuilderContext) *FastLogger { return NewFastLoggerWithDefaults(NewBuilderContext(c, ctn)) })
+	cargo.RegisterKV[ConfigProvider[AppConfig]](ctn, func(cargo.BuilderContext) ConfigProvider[AppConfig] { return cfg })
 	gen := NewSequenceIDGenerator()
 	return &App{
 		server: &http.Server{
@@ -77,7 +75,10 @@ func (app *App) Run() {
 
 func (app *App) Inspect() {
 	cargo.Inspect(app.container)
-	fmt.Println(app.config.Value())
+	fmt.Println()
+	fmt.Println("Config:")
+	fmt.Printf(".   %v\n", app.config.Value())
+	fmt.Println()
 }
 
 var DEBUG bool = true

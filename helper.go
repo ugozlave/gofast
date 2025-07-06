@@ -60,20 +60,20 @@ func MustGet[T any](ctx *BuilderContext, lt Lifetime) T {
 	return v
 }
 
-func Add[C Controller](app *App, builder func(ctx *BuilderContext) C) {
+func Add[C Controller](app *App, builder func(*BuilderContext) C) {
 	Register[Controller](app, builder)
 }
 
-func Use[M Middleware](app *App, builder func(ctx *BuilderContext) M) {
+func Use[M Middleware](app *App, builder func(*BuilderContext) M) {
 	Register[Middleware](app, builder)
 }
 
-func Log[L Logger](app *App, builder func(ctx *BuilderContext) L) {
+func Log[L Logger](app *App, builder func(*BuilderContext) L) {
 	Register[Logger](app, builder)
 }
 
-func Cfg[C any](app *App, builder func(ctx *BuilderContext) *Config[C]) {
-	Register[ConfigProvider[C]](app, builder)
+func Cfg[C ConfigProvider[T], T any](app *App, builder func(*BuilderContext) C) {
+	Register[ConfigProvider[T]](app, builder)
 }
 
 func GetLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
