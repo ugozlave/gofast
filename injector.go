@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/ugozlave/cargo"
 )
@@ -56,7 +57,8 @@ func (inj *HttpInjector) Handler() http.Handler {
 func (inj *HttpInjector) Controllers(ctx cargo.BuilderContext, scope string) http.Handler {
 	mux := http.NewServeMux()
 	for _, ctrl := range cargo.All[Controller](inj.ctn, scope, ctx) {
-		mux.Handle(ctrl.Prefix()+"/", http.StripPrefix(ctrl.Prefix(), ctrl.Routes()))
+		prefix := strings.TrimSuffix(ctrl.Prefix(), "/")
+		mux.Handle(prefix+"/", http.StripPrefix(prefix, ctrl.Routes()))
 	}
 	return mux
 }
