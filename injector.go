@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/ugozlave/cargo"
@@ -65,7 +66,7 @@ func (inj *HttpInjector) Controllers(ctx cargo.BuilderContext, scope string) htt
 
 func (inj *HttpInjector) Middlewares(ctx cargo.BuilderContext, scope string) func(http.Handler) http.Handler {
 	return func(mux http.Handler) http.Handler {
-		for _, mid := range cargo.All[Middleware](inj.ctn, scope, ctx) {
+		for _, mid := range slices.Backward(cargo.All[Middleware](inj.ctn, scope, ctx)) {
 			mux = mid.Handle(mux)
 		}
 		return mux
