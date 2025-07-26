@@ -47,7 +47,7 @@ func (app *App) WithIDGenerator(generator UniqueIDGenerator) *App {
 }
 
 func (app *App) Run() {
-	if DEBUG {
+	if SETTINGS.DEBUG {
 		app.Inspect()
 	}
 
@@ -81,4 +81,14 @@ func (app *App) Inspect() {
 	fmt.Println()
 }
 
-var DEBUG bool = true
+type Settings struct {
+	DEBUG            bool
+	CONFIG_FILE_NAME string
+	CONFIG_FILE_EXT  string
+}
+
+var SETTINGS = &Settings{
+	DEBUG:            true,
+	CONFIG_FILE_NAME: "config",
+	CONFIG_FILE_EXT:  "json",
+}

@@ -2,6 +2,7 @@ package faster
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 
 	"github.com/ugozlave/gofast"
@@ -15,23 +16,23 @@ type Config[T any] struct {
 ** AppConfig
  */
 
-func NewConfig[T any](v T) *Config[T] {
+func NewConfig[T any](v T, keys ...string) *Config[T] {
 	base := struct {
 		Env string `json:"Environment"`
 	}{}
-	data, err := os.ReadFile("config.json")
+	data, err := os.ReadFile(gofast.SETTINGS.CONFIG_FILE_NAME + "." + gofast.SETTINGS.CONFIG_FILE_EXT)
 	if err == nil {
 		_ = json.Unmarshal(data, &base)
-		_ = json.Unmarshal(data, &v)
+		_ = GetNestedConfig(data, &v, keys...)
 	}
 	env, ok := os.LookupEnv("ENVIRONMENT")
 	if ok {
 		base.Env = env
 	}
 	if base.Env != "" {
-		data, err = os.ReadFile("config." + base.Env + ".json")
+		data, err = os.ReadFile(gofast.SETTINGS.CONFIG_FILE_NAME + "." + base.Env + "." + gofast.SETTINGS.CONFIG_FILE_EXT)
 		if err == nil {
-			_ = json.Unmarshal(data, &v)
+			_ = GetNestedConfig(data, &v, keys...)
 		}
 	}
 	return &Config[T]{value: v}
@@ -47,4 +48,35 @@ func NewAppConfig() *Config[gofast.AppConfig] {
 	v.Log.Level = "debug"
 	v.Server.Port = 8080
 	return NewConfig(v)
+}
+
+func GetNestedConfig[T any](data []byte, v *T, keys ...string) error {
+	var root map[string]interface{}
+	if err := json.Unmarshal(data, &root); err != nil {
+		return err
+	}
+
+	current := root
+
+	for _, key := range keys {
+		value, ok := current[key]
+		if !ok {
+			return errors.New("config key not found: " + key)
+		}
+		current, ok = value.(map[string]interface{})
+		if !ok {
+			return errors.New("config key is not a map: " + key)
+		}
+	}
+
+	data, err := json.Marshal(current)
+	if err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(data, v); err != nil {
+		return err
+	}
+
+	return nil
 }
