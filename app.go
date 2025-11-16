@@ -14,17 +14,17 @@ import (
 
 type App struct {
 	server    *http.Server
-	config    ConfigProvider[AppConfig]
+	config    Config[AppConfig]
 	container *cargo.Container
 	context   context.Context
 	generator UniqueIDGenerator
 }
 
-func New(cfg ConfigProvider[AppConfig]) *App {
+func New(cfg Config[AppConfig]) *App {
 	ctx := context.WithValue(context.Background(), CtxEnvironment, cfg.Value().Env)
 	ctn := cargo.New()
 	ctn.CreateScope(ScopeApplicationKey)
-	cargo.RegisterKV[ConfigProvider[AppConfig]](ctn, func(cargo.BuilderContext) ConfigProvider[AppConfig] { return cfg })
+	cargo.RegisterKV[Config[AppConfig]](ctn, func(cargo.BuilderContext) Config[AppConfig] { return cfg })
 	gen := NewSequenceIDGenerator()
 	return &App{
 		server: &http.Server{

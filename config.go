@@ -1,6 +1,6 @@
 package gofast
 
-type ConfigProvider[T any] interface {
+type Config[T any] interface {
 	Value() T
 }
 

@@ -8,7 +8,7 @@ import (
 	"github.com/ugozlave/gofast"
 )
 
-type Config[T any] struct {
+type FastConfig[T any] struct {
 	value T
 }
 
@@ -16,7 +16,7 @@ type Config[T any] struct {
 ** AppConfig
  */
 
-func NewConfig[T any](v T, keys ...string) *Config[T] {
+func NewConfig[T any](v T, keys ...string) *FastConfig[T] {
 	base := struct {
 		Env string `json:"Environment"`
 	}{}
@@ -35,17 +35,19 @@ func NewConfig[T any](v T, keys ...string) *Config[T] {
 			_ = GetNestedConfig(data, &v, keys...)
 		}
 	}
-	return &Config[T]{value: v}
+	return &FastConfig[T]{value: v}
 }
 
-func (c *Config[T]) Value() T {
+func (c *FastConfig[T]) Value() T {
 	return c.value
 }
 
-func NewAppConfig() *Config[gofast.AppConfig] {
+func NewDefaultAppConfig() *FastConfig[gofast.AppConfig] {
 	var v gofast.AppConfig
+	v.App.Name = "gofast"
 	v.Env = "development"
 	v.Log.Level = "debug"
+	v.Server.Host = ""
 	v.Server.Port = 8080
 	return NewConfig(v)
 }

@@ -72,8 +72,8 @@ func Log[L Logger](app *App, builder func(*BuilderContext) L) {
 	Register[Logger](app, builder)
 }
 
-func Cfg[C ConfigProvider[T], T any](app *App, builder func(*BuilderContext) C) {
-	Register[ConfigProvider[T]](app, builder)
+func Cfg[C Config[T], T any](app *App, builder func(*BuilderContext) C) {
+	Register[Config[T]](app, builder)
 }
 
 func GetLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
@@ -96,10 +96,10 @@ func MustGetLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
 	}
 }
 
-func GetConfig[C any](ctx *BuilderContext, lt Lifetime) ConfigProvider[C] {
-	return Get[ConfigProvider[C]](ctx, lt)
+func GetConfig[C any](ctx *BuilderContext, lt Lifetime) Config[C] {
+	return Get[Config[C]](ctx, lt)
 }
 
-func MustGetConfig[C any](ctx *BuilderContext, lt Lifetime) ConfigProvider[C] {
-	return MustGet[ConfigProvider[C]](ctx, lt)
+func MustGetConfig[C any](ctx *BuilderContext, lt Lifetime) Config[C] {
+	return MustGet[Config[C]](ctx, lt)
 }

@@ -51,3 +51,25 @@ func (w *writer) WriteHeader(code int) {
 	w.status = code
 	w.ResponseWriter.WriteHeader(code)
 }
+
+/*
+** RecoverMiddleware
+ */
+
+type RecoverMiddleware struct {
+}
+
+func NewRecoverMiddleware(ctx *gofast.BuilderContext) *RecoverMiddleware {
+	return &RecoverMiddleware{}
+}
+
+func (m *RecoverMiddleware) Handle(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
