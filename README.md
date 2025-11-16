@@ -19,7 +19,7 @@ Designed to be clean, fast, and dependency-free, it provides a built-in dependen
 
 ### Prerequisites
 
-**gofast** requires [Go](https://go.dev/) version [1.24.3](https://go.dev/doc/devel/release#go1.24.3) or above.
+**gofast** requires [Go](https://go.dev/) version [1.24](https://go.dev/doc/devel/release#go1.24) or above.
 
 ## Installation
 
@@ -34,10 +34,10 @@ go get github.com/ugozlave/gofast
 ```go
 package main
 
-import fast "github.com/ugozlave/gofast"
+import "github.com/ugozlave/gofast/faster"
 
 func main() {
-	app := fast.New(faster.NewAppConfig())
+	app := faster.New()
 	app.Run()
 }
 ```
