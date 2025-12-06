@@ -82,13 +82,17 @@ func (app *App) Inspect() {
 }
 
 type Settings struct {
-	DEBUG            bool
-	CONFIG_FILE_NAME string
-	CONFIG_FILE_EXT  string
+	DEBUG                  bool
+	CONFIG_FILE_NAME       string
+	CONFIG_FILE_EXT        string
+	CONFIG_APPLICATION_KEY string
+	ENV_PREFIX             string
 }
 
 var SETTINGS = &Settings{
-	DEBUG:            true,
-	CONFIG_FILE_NAME: "config",
-	CONFIG_FILE_EXT:  "json",
+	DEBUG:                  true,
+	CONFIG_FILE_NAME:       "config",
+	CONFIG_FILE_EXT:        "json",
+	CONFIG_APPLICATION_KEY: "Application",
+	ENV_PREFIX:             "GOFAST",
 }
