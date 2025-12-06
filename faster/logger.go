@@ -14,7 +14,7 @@ type FastLogger struct {
 
 func NewFastLogger(ctx *gofast.BuilderContext) *FastLogger {
 	config := gofast.MustGetConfig[gofast.AppConfig](ctx, gofast.Singleton)
-	application := config.Value().App.Name
+	application := config.Value().Name
 	if application == "" {
 		application, _ = os.Executable()
 	}

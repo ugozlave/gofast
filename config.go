@@ -9,11 +9,9 @@ type Config[T any] interface {
  */
 
 type AppConfig struct {
-	App struct {
-		Name string `json:"Name"`
-	} `json:"Application"`
-	Env string `json:"Environment"`
-	Log struct {
+	Name string `json:"Name"`
+	Env  string `json:"Environment"`
+	Log  struct {
 		Level string `json:"Level"`
 	} `json:"Logging"`
 	Server struct {

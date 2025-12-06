@@ -3,7 +3,7 @@ package faster
 import "github.com/ugozlave/gofast"
 
 func New() *gofast.App {
-	app := gofast.New(NewDefaultAppConfig())
+	app := gofast.New(NewAppConfig())
 	Log(app)
 	Health(app)
 	Recover(app)

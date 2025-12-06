@@ -3,7 +3,9 @@ package faster
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/ugozlave/gofast"
 )
@@ -22,18 +24,21 @@ func NewConfig[T any](v T, keys ...string) *FastConfig[T] {
 	}{}
 	data, err := os.ReadFile(gofast.SETTINGS.CONFIG_FILE_NAME + "." + gofast.SETTINGS.CONFIG_FILE_EXT)
 	if err == nil {
-		_ = json.Unmarshal(data, &base)
+		_ = GetNestedConfig(data, &base, gofast.SETTINGS.CONFIG_APPLICATION_KEY)
 		_ = GetNestedConfig(data, &v, keys...)
 	}
-	env, ok := os.LookupEnv("ENVIRONMENT")
-	if ok {
-		base.Env = env
+	data, err = ReadEnv(gofast.SETTINGS.ENV_PREFIX)
+	if err == nil {
+		_ = GetNestedConfig(data, &base, gofast.SETTINGS.CONFIG_APPLICATION_KEY)
 	}
 	if base.Env != "" {
-		data, err = os.ReadFile(gofast.SETTINGS.CONFIG_FILE_NAME + "." + base.Env + "." + gofast.SETTINGS.CONFIG_FILE_EXT)
+		data, err := os.ReadFile(gofast.SETTINGS.CONFIG_FILE_NAME + "." + base.Env + "." + gofast.SETTINGS.CONFIG_FILE_EXT)
 		if err == nil {
 			_ = GetNestedConfig(data, &v, keys...)
 		}
+	}
+	if err == nil {
+		_ = GetNestedConfig(data, &v, keys...)
 	}
 	return &FastConfig[T]{value: v}
 }
@@ -42,18 +47,18 @@ func (c *FastConfig[T]) Value() T {
 	return c.value
 }
 
-func NewDefaultAppConfig() *FastConfig[gofast.AppConfig] {
+func NewAppConfig() *FastConfig[gofast.AppConfig] {
 	var v gofast.AppConfig
-	v.App.Name = "gofast"
+	v.Name = "gofast"
 	v.Env = "development"
 	v.Log.Level = "debug"
 	v.Server.Host = ""
 	v.Server.Port = 8080
-	return NewConfig(v)
+	return NewConfig(v, gofast.SETTINGS.CONFIG_APPLICATION_KEY)
 }
 
 func GetNestedConfig[T any](data []byte, v *T, keys ...string) error {
-	var root map[string]interface{}
+	var root map[string]any
 	if err := json.Unmarshal(data, &root); err != nil {
 		return err
 	}
@@ -65,7 +70,7 @@ func GetNestedConfig[T any](data []byte, v *T, keys ...string) error {
 		if !ok {
 			return errors.New("config key not found: " + key)
 		}
-		current, ok = value.(map[string]interface{})
+		current, ok = value.(map[string]any)
 		if !ok {
 			return errors.New("config key is not a map: " + key)
 		}
@@ -77,8 +82,46 @@ func GetNestedConfig[T any](data []byte, v *T, keys ...string) error {
 	}
 
 	if err := json.Unmarshal(data, v); err != nil {
+		fmt.Println(err)
 		return err
 	}
 
 	return nil
+}
+
+func ReadEnv(prefix string) ([]byte, error) {
+	root := make(map[string]any)
+	for _, env := range os.Environ() {
+		if !strings.HasPrefix(env, prefix+"_") {
+			continue
+		}
+		parts := strings.SplitN(env, "=", 2)
+		k := parts[0]
+		v := parts[1]
+		keys := strings.Split(k[len(prefix)+1:], "_")
+		current := root
+		for i, key := range keys {
+			if i == len(keys)-1 {
+				if strings.HasPrefix(v, "[") && strings.HasSuffix(v, "]") {
+					var arr []any
+					if err := json.Unmarshal([]byte(v), &arr); err != nil {
+						return nil, errors.New("config value is not an array: " + v)
+					}
+					current[key] = arr
+				} else {
+					current[key] = v
+				}
+				break
+			}
+			_, ok := current[key]
+			if !ok {
+				current[key] = make(map[string]any)
+			}
+			current, ok = current[key].(map[string]any)
+			if !ok {
+				return nil, errors.New("config key is not a map: " + key)
+			}
+		}
+	}
+	return json.Marshal(root)
 }
