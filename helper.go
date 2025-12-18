@@ -15,49 +15,14 @@ const (
 )
 
 const (
-	ScopeApplicationKey   = "gofast-scope-application"
-	ScopeRequestKeyFormat = "gofast-scope-request-%s"
+	ScopeApplicationKeyFormat = "gofast-scope-application-%s"
+	ScopeRequestKeyFormat     = "gofast-scope-request-%s"
 )
 
 func Register[K any, V any](app *App, builder func(*BuilderContext) V) {
 	cargo.RegisterKV[K](app.container, func(ctx cargo.BuilderContext) V {
 		return builder(NewBuilderContext(ctx, app.container))
 	})
-}
-
-func Get[T any](ctx *BuilderContext, lt Lifetime) T {
-	var v T
-	switch lt {
-	case Singleton:
-		v = cargo.MustGet[T](ctx.C(), ScopeApplicationKey, ctx)
-	case Scoped:
-		scope := ctx.RequestId()
-		v = cargo.MustGet[T](ctx.C(), fmt.Sprintf(ScopeRequestKeyFormat, scope), ctx)
-	case Transient:
-		v = cargo.MustBuild[T](ctx.C(), ctx)
-	default:
-		v = cargo.MustGet[T](ctx.C(), ScopeApplicationKey, ctx)
-	}
-	return v
-}
-
-func MustGet[T any](ctx *BuilderContext, lt Lifetime) T {
-	var v T
-	switch lt {
-	case Singleton:
-		v = cargo.MustGet[T](ctx.C(), ScopeApplicationKey, ctx)
-	case Scoped:
-		scope := ctx.RequestId()
-		v = cargo.MustGet[T](ctx.C(), fmt.Sprintf(ScopeRequestKeyFormat, scope), ctx)
-	case Transient:
-		v = cargo.MustBuild[T](ctx.C(), ctx)
-	default:
-		v = cargo.MustGet[T](ctx.C(), ScopeApplicationKey, ctx)
-	}
-	if any(v) == nil {
-		panic(fmt.Sprintf("type %T is nil", new(T)))
-	}
-	return v
 }
 
 func Add[C Controller](app *App, builder func(*BuilderContext) C) {
@@ -74,6 +39,39 @@ func Log[L Logger](app *App, builder func(*BuilderContext) L) {
 
 func Cfg[C Config[T], T any](app *App, builder func(*BuilderContext) C) {
 	Register[Config[T]](app, builder)
+}
+
+func Get[T any](ctx *BuilderContext, lt Lifetime) T {
+	var v T
+	switch lt {
+	case Singleton:
+		name := ctx.ApplicationName()
+		v = cargo.MustGet[T](ctx.container, fmt.Sprintf(ScopeApplicationKeyFormat, name), ctx)
+	case Scoped:
+		scope := ctx.RequestId()
+		v = cargo.MustGet[T](ctx.container, fmt.Sprintf(ScopeRequestKeyFormat, scope), ctx)
+	case Transient:
+		v = cargo.MustBuild[T](ctx.container, ctx)
+	}
+	return v
+}
+
+func MustGet[T any](ctx *BuilderContext, lt Lifetime) T {
+	var v T
+	switch lt {
+	case Singleton:
+		name := ctx.ApplicationName()
+		v = cargo.MustGet[T](ctx.container, fmt.Sprintf(ScopeApplicationKeyFormat, name), ctx)
+	case Scoped:
+		scope := ctx.RequestId()
+		v = cargo.MustGet[T](ctx.container, fmt.Sprintf(ScopeRequestKeyFormat, scope), ctx)
+	case Transient:
+		v = cargo.MustBuild[T](ctx.container, ctx)
+	}
+	if any(v) == nil {
+		panic(fmt.Sprintf("type %T is nil", new(T)))
+	}
+	return v
 }
 
 func GetLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {

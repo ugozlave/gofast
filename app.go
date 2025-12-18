@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
-	"os/signal"
 	"time"
 
 	"github.com/ugozlave/cargo"
@@ -16,14 +14,11 @@ type App struct {
 	server    *http.Server
 	config    Config[AppConfig]
 	container *cargo.Container
-	context   context.Context
 	generator UniqueIDGenerator
 }
 
 func New(cfg Config[AppConfig]) *App {
-	ctx := context.WithValue(context.Background(), CtxEnvironment, cfg.Value().Env)
 	ctn := cargo.New()
-	ctn.CreateScope(ScopeApplicationKey)
 	cargo.RegisterKV[Config[AppConfig]](ctn, func(cargo.BuilderContext) Config[AppConfig] { return cfg })
 	gen := NewSequenceIDGenerator()
 	return &App{
@@ -33,7 +28,6 @@ func New(cfg Config[AppConfig]) *App {
 		},
 		config:    cfg,
 		container: ctn,
-		context:   ctx,
 		generator: gen,
 	}
 }
@@ -46,13 +40,19 @@ func (app *App) WithIDGenerator(generator UniqueIDGenerator) *App {
 	return app
 }
 
-func (app *App) Run() {
+func (app *App) Run(ctx context.Context) {
+	ctx = context.WithValue(ctx, CtxApplicationName, app.config.Value().Name)
+	ctx = context.WithValue(ctx, CtxEnvironment, app.config.Value().Env)
+
+	app.container.CreateScope(fmt.Sprintf(ScopeApplicationKeyFormat, app.config.Value().Name))
+
+	server := app.server
+	server.Handler = NewHttpInjector(app.generator, app.container, ctx).Handler()
+
 	if SETTINGS.DEBUG {
 		app.Inspect()
 	}
 
-	server := app.server
-	server.Handler = NewHttpInjector(app.generator, app.container, app.context).Handler()
 	go func() {
 		fmt.Println("server start")
 		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
@@ -60,16 +60,22 @@ func (app *App) Run() {
 		}
 	}()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
-	<-quit
+	<-ctx.Done()
 	fmt.Println()
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+func (app *App) Shutdown() {
+	container := app.container
+	defer container.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	server := app.server
 	if err := server.Shutdown(ctx); err != nil {
 		fmt.Println("server shutdown failed:", err.Error())
 	}
+
 	fmt.Println("server stop")
 }
 
