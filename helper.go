@@ -2,6 +2,7 @@ package gofast
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/ugozlave/cargo"
 )
@@ -20,8 +21,14 @@ const (
 )
 
 func Register[K any, V any](app *App, builder func(*BuilderContext) V) {
-	cargo.RegisterKV[K](app.container, func(ctx cargo.BuilderContext) V {
-		return builder(NewBuilderContext(ctx, app.container))
+	ctn := app.container
+	key := From[K]()
+	value := From[V]()
+	if !value.AssignableTo(key) {
+		panic(fmt.Sprintf("type %v is not assignable to %v", value, key))
+	}
+	ctn.Register(key.String(), value.String(), func(ctx cargo.BuilderContext) any {
+		return builder(NewBuilderContext(ctx, ctn))
 	})
 }
 
@@ -42,31 +49,35 @@ func Cfg[C Config[T], T any](app *App, builder func(*BuilderContext) C) {
 }
 
 func Get[T any](ctx *BuilderContext, lt Lifetime) T {
+	ctn := ctx.container
+	key := From[T]()
 	var v T
 	switch lt {
 	case Singleton:
 		name := ctx.ApplicationName()
-		v = cargo.MustGet[T](ctx.container, fmt.Sprintf(ScopeApplicationKeyFormat, name), ctx)
+		v = ctn.MustGet(key.String(), fmt.Sprintf(ScopeApplicationKeyFormat, name), ctx).(T)
 	case Scoped:
 		scope := ctx.RequestId()
-		v = cargo.MustGet[T](ctx.container, fmt.Sprintf(ScopeRequestKeyFormat, scope), ctx)
+		v = ctn.MustGet(key.String(), fmt.Sprintf(ScopeRequestKeyFormat, scope), ctx).(T)
 	case Transient:
-		v = cargo.MustBuild[T](ctx.container, ctx)
+		v = ctn.MustBuild(key.String(), ctx).(T)
 	}
 	return v
 }
 
 func MustGet[T any](ctx *BuilderContext, lt Lifetime) T {
+	ctn := ctx.container
+	key := From[T]()
 	var v T
 	switch lt {
 	case Singleton:
 		name := ctx.ApplicationName()
-		v = cargo.MustGet[T](ctx.container, fmt.Sprintf(ScopeApplicationKeyFormat, name), ctx)
+		v = ctn.MustGet(key.String(), fmt.Sprintf(ScopeApplicationKeyFormat, name), ctx).(T)
 	case Scoped:
 		scope := ctx.RequestId()
-		v = cargo.MustGet[T](ctx.container, fmt.Sprintf(ScopeRequestKeyFormat, scope), ctx)
+		v = ctn.MustGet(key.String(), fmt.Sprintf(ScopeRequestKeyFormat, scope), ctx).(T)
 	case Transient:
-		v = cargo.MustBuild[T](ctx.container, ctx)
+		v = ctn.MustBuild(key.String(), ctx).(T)
 	}
 	if any(v) == nil {
 		panic(fmt.Sprintf("type %T is nil", new(T)))
@@ -75,7 +86,7 @@ func MustGet[T any](ctx *BuilderContext, lt Lifetime) T {
 }
 
 func GetLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
-	logger := Get[Logger](ctx, lt).With(LogService, cargo.From[S]())
+	logger := Get[Logger](ctx, lt).With(LogService, From[S]())
 	switch lt {
 	case Scoped:
 		return logger.With(LogRequestId, ctx.RequestId())
@@ -85,7 +96,7 @@ func GetLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
 }
 
 func MustGetLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
-	logger := MustGet[Logger](ctx, lt).With(LogService, cargo.From[S]())
+	logger := MustGet[Logger](ctx, lt).With(LogService, From[S]())
 	switch lt {
 	case Scoped:
 		return logger.With(LogRequestId, ctx.RequestId())
@@ -100,4 +111,29 @@ func GetConfig[C any](ctx *BuilderContext, lt Lifetime) Config[C] {
 
 func MustGetConfig[C any](ctx *BuilderContext, lt Lifetime) Config[C] {
 	return MustGet[Config[C]](ctx, lt)
+}
+
+func All[T any](ctx *BuilderContext, lt Lifetime) []T {
+	ctn := ctx.container
+	key := From[T]()
+	var instances []any
+	switch lt {
+	case Singleton:
+		name := ctx.ApplicationName()
+		instances = ctn.Gets(key.String(), fmt.Sprintf(ScopeApplicationKeyFormat, name), ctx)
+	case Scoped:
+		scope := ctx.RequestId()
+		instances = ctn.Gets(key.String(), fmt.Sprintf(ScopeRequestKeyFormat, scope), ctx)
+	case Transient:
+		instances = ctn.Builds(key.String(), ctx)
+	}
+	result := make([]T, 0, len(instances))
+	for _, instance := range instances {
+		result = append(result, instance.(T))
+	}
+	return result
+}
+
+func From[T any]() reflect.Type {
+	return reflect.TypeOf((*T)(nil)).Elem()
 }

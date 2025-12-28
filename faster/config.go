@@ -10,15 +10,15 @@ import (
 	"github.com/ugozlave/gofast"
 )
 
-type FastConfig[T any] struct {
+/*
+** Config
+ */
+
+type Config[T any] struct {
 	value T
 }
 
-/*
-** AppConfig
- */
-
-func NewConfig[T any](v T, keys ...string) *FastConfig[T] {
+func NewConfig[T any](v T, keys ...string) *Config[T] {
 	base := struct {
 		Env string `json:"Environment"`
 	}{}
@@ -40,21 +40,11 @@ func NewConfig[T any](v T, keys ...string) *FastConfig[T] {
 	if err == nil {
 		_ = GetNestedConfig(data, &v, keys...)
 	}
-	return &FastConfig[T]{value: v}
+	return &Config[T]{value: v}
 }
 
-func (c *FastConfig[T]) Value() T {
+func (c *Config[T]) Value() T {
 	return c.value
-}
-
-func NewAppConfig() *FastConfig[gofast.AppConfig] {
-	var v gofast.AppConfig
-	v.Name = "gofast"
-	v.Env = "development"
-	v.Log.Level = "debug"
-	v.Server.Host = ""
-	v.Server.Port = 8080
-	return NewConfig(v, gofast.SETTINGS.CONFIG_APPLICATION_KEY)
 }
 
 func GetNestedConfig[T any](data []byte, v *T, keys ...string) error {
@@ -124,4 +114,18 @@ func ReadEnv(prefix string) ([]byte, error) {
 		}
 	}
 	return json.Marshal(root)
+}
+
+/*
+** AppConfig
+ */
+
+func NewAppConfig() *Config[gofast.AppConfig] {
+	var v gofast.AppConfig
+	v.Name = "gofast"
+	v.Env = "development"
+	v.Log.Level = "debug"
+	v.Server.Host = ""
+	v.Server.Port = 8080
+	return NewConfig(v, gofast.SETTINGS.CONFIG_APPLICATION_KEY)
 }

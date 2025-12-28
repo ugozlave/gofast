@@ -18,12 +18,12 @@ func NewHealthController(_ *gofast.BuilderContext) *HealthController {
 }
 
 func (c *HealthController) Prefix() string {
-	return "/health"
+	return "health"
 }
 
 func (c *HealthController) Routes() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /", c.handle)
+	mux.HandleFunc("GET /{$}", c.handle)
 	return mux
 }
 

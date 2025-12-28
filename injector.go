@@ -15,23 +15,22 @@ type Injector interface {
 }
 
 type HttpInjector struct {
-	gen UniqueIDGenerator
 	ctn *cargo.Container
 	ctx context.Context
 }
 
-func NewHttpInjector(gen UniqueIDGenerator, ctn *cargo.Container, ctx context.Context) *HttpInjector {
+func NewHttpInjector(ctn *cargo.Container, ctx context.Context) *HttpInjector {
 	return &HttpInjector{
-		gen: gen,
 		ctn: ctn,
 		ctx: ctx,
 	}
 }
 
 func (inj *HttpInjector) Handler() http.Handler {
+	gen := Get[UniqueIDGenerator](NewBuilderContext(inj.ctx, inj.ctn), Transient)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// create unique request ID
-		id := inj.gen.Next()
+		id := gen.Next()
 
 		// create unique scope for the request
 		scope := fmt.Sprintf(ScopeRequestKeyFormat, id)
@@ -44,10 +43,10 @@ func (inj *HttpInjector) Handler() http.Handler {
 		ctx := NewBuilderContext(context.WithValue(inj.ctx, CtxRequestId, id), inj.ctn)
 
 		// build controllers
-		handler := inj.Controllers(ctx, scope)
+		handler := inj.Controllers(ctx)
 
 		// build middlewares
-		use := inj.Middlewares(ctx, scope)
+		use := inj.Middlewares(ctx)
 
 		mux := use(handler)
 
@@ -55,18 +54,18 @@ func (inj *HttpInjector) Handler() http.Handler {
 	})
 }
 
-func (inj *HttpInjector) Controllers(ctx cargo.BuilderContext, scope string) http.Handler {
+func (inj *HttpInjector) Controllers(ctx *BuilderContext) http.Handler {
 	mux := http.NewServeMux()
-	for _, ctrl := range cargo.All[Controller](inj.ctn, scope, ctx) {
-		prefix := strings.TrimSuffix(ctrl.Prefix(), "/")
-		mux.Handle(prefix+"/", http.StripPrefix(prefix, ctrl.Routes()))
+	for _, ctrl := range All[Controller](ctx, Scoped) {
+		prefix := strings.Trim(ctrl.Prefix(), "/")
+		mux.Handle("/"+prefix+"/", http.StripPrefix("/"+prefix, ctrl.Routes()))
 	}
 	return mux
 }
 
-func (inj *HttpInjector) Middlewares(ctx cargo.BuilderContext, scope string) func(http.Handler) http.Handler {
+func (inj *HttpInjector) Middlewares(ctx *BuilderContext) func(http.Handler) http.Handler {
 	return func(mux http.Handler) http.Handler {
-		for _, mid := range slices.Backward(cargo.All[Middleware](inj.ctn, scope, ctx)) {
+		for _, mid := range slices.Backward(All[Middleware](ctx, Scoped)) {
 			mux = mid.Handle(mux)
 		}
 		return mux

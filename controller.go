@@ -1,8 +1,6 @@
 package gofast
 
-import (
-	"net/http"
-)
+import "net/http"
 
 type Controller interface {
 	Prefix() string

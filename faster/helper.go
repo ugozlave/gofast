@@ -1,6 +1,8 @@
 package faster
 
-import "github.com/ugozlave/gofast"
+import (
+	"github.com/ugozlave/gofast"
+)
 
 func New() *gofast.App {
 	app := gofast.New(NewAppConfig())
@@ -11,7 +13,7 @@ func New() *gofast.App {
 }
 
 func Log(app *gofast.App) {
-	gofast.Log(app, NewFastLogger)
+	gofast.Log(app, NewLogger)
 	gofast.Use(app, NewLogMiddleware)
 }
 

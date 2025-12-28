@@ -8,11 +8,15 @@ import (
 	"github.com/ugozlave/gofast"
 )
 
-type FastLogger struct {
+/*
+** Logger
+ */
+
+type Logger struct {
 	*slog.Logger
 }
 
-func NewFastLogger(ctx *gofast.BuilderContext) *FastLogger {
+func NewLogger(ctx *gofast.BuilderContext) *Logger {
 	config := gofast.MustGetConfig[gofast.AppConfig](ctx, gofast.Singleton)
 	application := config.Value().Name
 	if application == "" {
@@ -38,55 +42,55 @@ func NewFastLogger(ctx *gofast.BuilderContext) *FastLogger {
 		},
 	)
 	logger := slog.New(handler)
-	return &FastLogger{
+	return &Logger{
 		Logger: logger.
 			With(slog.String(gofast.LogApplication, application)).
 			With(slog.String(gofast.LogEnvironment, config.Value().Env)),
 	}
 }
 
-func (l *FastLogger) Dbg(msg string, args ...any) {
+func (l *Logger) Dbg(msg string, args ...any) {
 	l.Logger.Debug(msg, args...)
 }
 
-func (l *FastLogger) Inf(msg string, args ...any) {
+func (l *Logger) Inf(msg string, args ...any) {
 	l.Logger.Info(msg, args...)
 }
 
-func (l *FastLogger) Wrn(msg string, args ...any) {
+func (l *Logger) Wrn(msg string, args ...any) {
 	l.Logger.Warn(msg, args...)
 }
 
-func (l *FastLogger) Err(msg string, args ...any) {
+func (l *Logger) Err(msg string, args ...any) {
 	l.Logger.Error(msg, args...)
 }
 
-func (l *FastLogger) With(args ...any) gofast.Logger {
-	return &FastLogger{
+func (l *Logger) With(args ...any) gofast.Logger {
+	return &Logger{
 		Logger: l.Logger.With(args...),
 	}
 }
 
-func (l *FastLogger) WithGroup(name string) gofast.Logger {
-	return &FastLogger{
+func (l *Logger) WithGroup(name string) gofast.Logger {
+	return &Logger{
 		Logger: l.Logger.WithGroup(name),
 	}
 }
 
-func (l *FastLogger) WithApplication(v string) *FastLogger {
-	return &FastLogger{
+func (l *Logger) WithApplication(v string) *Logger {
+	return &Logger{
 		Logger: l.Logger.With(slog.String(gofast.LogApplication, v)),
 	}
 }
 
-func (l *FastLogger) WithEnvironment(v string) *FastLogger {
-	return &FastLogger{
+func (l *Logger) WithEnvironment(v string) *Logger {
+	return &Logger{
 		Logger: l.Logger.With(slog.String(gofast.LogEnvironment, v)),
 	}
 }
 
-func (l *FastLogger) WithService(v string) *FastLogger {
-	return &FastLogger{
+func (l *Logger) WithService(v string) *Logger {
+	return &Logger{
 		Logger: l.Logger.With(slog.String(gofast.LogService, v)),
 	}
 }
