@@ -5,7 +5,7 @@ import (
 )
 
 func TestSequenceIDGenerator_Uniqueness(t *testing.T) {
-	gen := NewSequenceIDGenerator()
+	gen := &SequenceIDGenerator{}
 	seen := make(map[string]bool, 1000)
 
 	for range 1000 {
@@ -18,7 +18,7 @@ func TestSequenceIDGenerator_Uniqueness(t *testing.T) {
 }
 
 func TestSequenceIDGenerator_ConcurrentAccess(t *testing.T) {
-	gen := NewSequenceIDGenerator()
+	gen := &SequenceIDGenerator{}
 	goroutines := 100
 	n := 100
 
@@ -52,7 +52,7 @@ func TestSequenceIDGenerator_ConcurrentAccess(t *testing.T) {
 }
 
 func BenchmarkSequenceIDGenerator_Next(b *testing.B) {
-	generator := NewSequenceIDGenerator()
+	generator := &SequenceIDGenerator{}
 
 	for b.Loop() {
 		_ = generator.Next()

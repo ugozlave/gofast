@@ -11,76 +11,67 @@ import (
 )
 
 type App struct {
-	server    *http.Server
 	config    Config[AppConfig]
 	container *cargo.Container
-	generator UniqueIDGenerator
 }
 
 func New(cfg Config[AppConfig]) *App {
 	ctn := cargo.New()
-	cargo.RegisterKV[Config[AppConfig]](ctn, func(cargo.BuilderContext) Config[AppConfig] { return cfg })
-	gen := NewSequenceIDGenerator()
+	Register[Config[AppConfig]](&App{container: ctn}, func(*BuilderContext) Config[AppConfig] { return cfg })
+	Register[UniqueIDGenerator](&App{container: ctn}, func(*BuilderContext) UniqueIDGenerator { return &SequenceIDGenerator{} })
 	return &App{
-		server: &http.Server{
-			Addr:    fmt.Sprintf("%s:%d", cfg.Value().Server.Host, cfg.Value().Server.Port),
-			Handler: nil,
-		},
 		config:    cfg,
 		container: ctn,
-		generator: gen,
 	}
-}
-
-func (app *App) WithIDGenerator(generator UniqueIDGenerator) *App {
-	if generator == nil {
-		panic("ID generator cannot be nil")
-	}
-	app.generator = generator
-	return app
 }
 
 func (app *App) Run(ctx context.Context) {
-	ctx = context.WithValue(ctx, CtxApplicationName, app.config.Value().Name)
-	ctx = context.WithValue(ctx, CtxEnvironment, app.config.Value().Env)
 
-	app.container.CreateScope(fmt.Sprintf(ScopeApplicationKeyFormat, app.config.Value().Name))
+	cfg := app.config.Value()
 
-	server := app.server
-	server.Handler = NewHttpInjector(app.generator, app.container, ctx).Handler()
+	ctx = context.WithValue(ctx, CtxApplicationName, cfg.Name)
+	ctx = context.WithValue(ctx, CtxEnvironment, cfg.Env)
+
+	ctn := app.container
+	defer ctn.Close()
+	ctn.CreateScope(fmt.Sprintf(ScopeApplicationKeyFormat, cfg.Name))
+
+	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
+	server := http.Server{
+		Addr:    addr,
+		Handler: NewHttpInjector(ctn, ctx).Handler(),
+	}
 
 	if SETTINGS.DEBUG {
 		app.Inspect()
 	}
 
+	fmt.Printf("server start [%v]\n", addr)
+
 	go func() {
-		fmt.Println("server start")
 		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			panic(err)
 		}
 	}()
 
 	<-ctx.Done()
+
 	fmt.Println()
-}
 
-func (app *App) Shutdown() {
-	container := app.container
-	defer container.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	timeout, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	server := app.server
-	if err := server.Shutdown(ctx); err != nil {
+	if err := server.Shutdown(timeout); err != nil {
 		fmt.Println("server shutdown failed:", err.Error())
 	}
 
 	fmt.Println("server stop")
+
 }
 
 func (app *App) Inspect() {
-	cargo.Inspect(app.container)
+	ctn := app.container
+	ctn.Inspect()
 	fmt.Println()
 	fmt.Println("Config:")
 	fmt.Printf(".   %v\n", app.config.Value())

@@ -12,6 +12,7 @@ const (
 	LogRemote      string = "remote"
 	LogAgent       string = "agent"
 	LogStatus      string = "status"
+	LogDuration    string = "duration"
 )
 
 type Logger interface {

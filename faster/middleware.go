@@ -1,7 +1,10 @@
 package faster
 
 import (
+	"fmt"
 	"net/http"
+	"runtime/debug"
+	"time"
 
 	"github.com/ugozlave/gofast"
 )
@@ -22,6 +25,7 @@ func NewLogMiddleware(ctx *gofast.BuilderContext) *LogMiddleware {
 
 func (m *LogMiddleware) Handle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t := time.Now()
 		writer := &writer{ResponseWriter: w}
 		group := m.logger.
 			WithGroup("http").
@@ -36,6 +40,7 @@ func (m *LogMiddleware) Handle(next http.Handler) http.Handler {
 		defer func() {
 			group.Inf("request finished",
 				gofast.LogStatus, writer.status,
+				gofast.LogDuration, time.Since(t),
 			)
 		}()
 		next.ServeHTTP(writer, r)
@@ -57,17 +62,25 @@ func (w *writer) WriteHeader(code int) {
  */
 
 type RecoverMiddleware struct {
+	logger gofast.Logger
 }
 
 func NewRecoverMiddleware(ctx *gofast.BuilderContext) *RecoverMiddleware {
-	return &RecoverMiddleware{}
+	return &RecoverMiddleware{
+		logger: gofast.MustGetLogger[RecoverMiddleware](ctx, gofast.Scoped),
+	}
 }
 
 func (m *RecoverMiddleware) Handle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if rec := recover(); rec != nil {
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				msg := fmt.Sprintf("panic: %s", rec)
+				if gofast.SETTINGS.DEBUG {
+					msg += fmt.Sprintf("\n\n%s", debug.Stack())
+				}
+				m.logger.Err(msg)
+				http.Error(w, msg, http.StatusInternalServerError)
 			}
 		}()
 		next.ServeHTTP(w, r)
