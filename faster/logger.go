@@ -8,22 +8,48 @@ import (
 	"github.com/ugozlave/gofast"
 )
 
+const (
+	LogApplication string = "application"
+	LogEnvironment string = "environment"
+	LogService     string = "service"
+	LogRequestId   string = "requestId"
+	LogHttp        string = "http"
+	LogMethod      string = "method"
+	LogHost        string = "host"
+	LogUrl         string = "url"
+	LogRemote      string = "remote"
+	LogAgent       string = "agent"
+	LogStatus      string = "status"
+	LogDuration    string = "duration"
+)
+
+type Logger interface {
+	Dbg(msg string, args ...any)
+	Inf(msg string, args ...any)
+	Wrn(msg string, args ...any)
+	Err(msg string, args ...any)
+	With(args ...any) Logger
+	WithGroup(name string) Logger
+}
+
 /*
 ** Logger
  */
 
-type Logger struct {
-	*slog.Logger
+type StdLogger struct {
+	logger *slog.Logger
 }
 
-func NewLogger(ctx *gofast.BuilderContext) *Logger {
-	config := gofast.MustGetConfig[gofast.AppConfig](ctx, gofast.Singleton)
-	application := config.Value().Name
-	if application == "" {
-		application, _ = os.Executable()
+func StdLoggerBuilder() Builder[*StdLogger] {
+	return func(ctx *gofast.BuilderContext) *StdLogger {
+		return NewStdLogger(ctx)
 	}
+}
+
+func NewStdLogger(ctx *gofast.BuilderContext) *StdLogger {
+	name, env := ctx.Name(), ctx.Environment()
 	level := slog.LevelInfo
-	switch strings.ToLower(config.Value().Log.Level) {
+	switch strings.ToLower("debug") {
 	case "debug", "dbg", "d":
 		level = slog.LevelDebug
 	case "info", "inf", "i":
@@ -42,57 +68,37 @@ func NewLogger(ctx *gofast.BuilderContext) *Logger {
 		},
 	)
 	logger := slog.New(handler)
-	return &Logger{
-		Logger: logger.
-			With(slog.String(gofast.LogApplication, application)).
-			With(slog.String(gofast.LogEnvironment, config.Value().Env)),
+	if name != "" {
+		logger = logger.With(slog.String(LogApplication, name))
 	}
-}
-
-func (l *Logger) Dbg(msg string, args ...any) {
-	l.Logger.Debug(msg, args...)
-}
-
-func (l *Logger) Inf(msg string, args ...any) {
-	l.Logger.Info(msg, args...)
-}
-
-func (l *Logger) Wrn(msg string, args ...any) {
-	l.Logger.Warn(msg, args...)
-}
-
-func (l *Logger) Err(msg string, args ...any) {
-	l.Logger.Error(msg, args...)
-}
-
-func (l *Logger) With(args ...any) gofast.Logger {
-	return &Logger{
-		Logger: l.Logger.With(args...),
+	if env != "" {
+		logger = logger.With(slog.String(LogEnvironment, env))
 	}
+	return &StdLogger{logger: logger}
 }
 
-func (l *Logger) WithGroup(name string) gofast.Logger {
-	return &Logger{
-		Logger: l.Logger.WithGroup(name),
-	}
+func (l *StdLogger) Dbg(msg string, args ...any) {
+	l.logger.Debug(msg, args...)
 }
 
-func (l *Logger) WithApplication(v string) *Logger {
-	return &Logger{
-		Logger: l.Logger.With(slog.String(gofast.LogApplication, v)),
-	}
+func (l *StdLogger) Inf(msg string, args ...any) {
+	l.logger.Info(msg, args...)
 }
 
-func (l *Logger) WithEnvironment(v string) *Logger {
-	return &Logger{
-		Logger: l.Logger.With(slog.String(gofast.LogEnvironment, v)),
-	}
+func (l *StdLogger) Wrn(msg string, args ...any) {
+	l.logger.Warn(msg, args...)
 }
 
-func (l *Logger) WithService(v string) *Logger {
-	return &Logger{
-		Logger: l.Logger.With(slog.String(gofast.LogService, v)),
-	}
+func (l *StdLogger) Err(msg string, args ...any) {
+	l.logger.Error(msg, args...)
+}
+
+func (l *StdLogger) With(args ...any) Logger {
+	return &StdLogger{l.logger.With(args...)}
+}
+
+func (l *StdLogger) WithGroup(name string) Logger {
+	return &StdLogger{logger: l.logger.WithGroup(name)}
 }
 
 /*
@@ -102,7 +108,13 @@ func (l *Logger) WithService(v string) *Logger {
 type NullLogger struct {
 }
 
-func NewNullLogger(_ *gofast.BuilderContext) *NullLogger {
+func NullLoggerBuilder() Builder[*NullLogger] {
+	return func(ctx *gofast.BuilderContext) *NullLogger {
+		return NewNullLogger(ctx)
+	}
+}
+
+func NewNullLogger(ctx *gofast.BuilderContext) *NullLogger {
 	return &NullLogger{}
 }
 
@@ -118,10 +130,10 @@ func (l *NullLogger) Wrn(msg string, args ...any) {
 func (l *NullLogger) Err(msg string, args ...any) {
 }
 
-func (l *NullLogger) With(args ...any) gofast.Logger {
+func (l *NullLogger) With(args ...any) Logger {
 	return &NullLogger{}
 }
 
-func (l *NullLogger) WithGroup(name string) gofast.Logger {
+func (l *NullLogger) WithGroup(name string) Logger {
 	return &NullLogger{}
 }

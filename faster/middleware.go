@@ -14,12 +14,18 @@ import (
  */
 
 type LogMiddleware struct {
-	logger gofast.Logger
+	logger Logger
+}
+
+func LogMiddlewareBuilder() Builder[*LogMiddleware] {
+	return func(ctx *gofast.BuilderContext) *LogMiddleware {
+		return NewLogMiddleware(ctx)
+	}
 }
 
 func NewLogMiddleware(ctx *gofast.BuilderContext) *LogMiddleware {
 	return &LogMiddleware{
-		logger: gofast.MustGetLogger[LogMiddleware](ctx, gofast.Scoped),
+		logger: MustGetLogger[LogMiddleware](ctx, gofast.Scoped),
 	}
 }
 
@@ -30,17 +36,17 @@ func (m *LogMiddleware) Handle(next http.Handler) http.Handler {
 		group := m.logger.
 			WithGroup("http").
 			With(
-				gofast.LogMethod, r.Method,
-				gofast.LogHost, r.Host,
-				gofast.LogUrl, r.URL.String(),
-				gofast.LogRemote, r.RemoteAddr,
-				gofast.LogAgent, r.UserAgent(),
+				LogMethod, r.Method,
+				LogHost, r.Host,
+				LogUrl, r.URL.String(),
+				LogRemote, r.RemoteAddr,
+				LogAgent, r.UserAgent(),
 			)
 		group.Inf("request received")
 		defer func() {
 			group.Inf("request finished",
-				gofast.LogStatus, writer.status,
-				gofast.LogDuration, time.Since(t),
+				LogStatus, writer.status,
+				LogDuration, time.Since(t),
 			)
 		}()
 		next.ServeHTTP(writer, r)
@@ -62,12 +68,18 @@ func (w *writer) WriteHeader(code int) {
  */
 
 type RecoverMiddleware struct {
-	logger gofast.Logger
+	logger Logger
+}
+
+func RecoverMiddlewareBuilder() Builder[*RecoverMiddleware] {
+	return func(ctx *gofast.BuilderContext) *RecoverMiddleware {
+		return NewRecoverMiddleware(ctx)
+	}
 }
 
 func NewRecoverMiddleware(ctx *gofast.BuilderContext) *RecoverMiddleware {
 	return &RecoverMiddleware{
-		logger: gofast.MustGetLogger[RecoverMiddleware](ctx, gofast.Scoped),
+		logger: MustGetLogger[RecoverMiddleware](ctx, gofast.Scoped),
 	}
 }
 
@@ -85,4 +97,28 @@ func (m *RecoverMiddleware) Handle(next http.Handler) http.Handler {
 		}()
 		next.ServeHTTP(w, r)
 	})
+}
+
+/*
+** TimeoutMiddleware
+ */
+
+type TimeoutMiddleware struct {
+	Timeout time.Duration
+}
+
+func TimeoutMiddlewareBuilder() Builder[*TimeoutMiddleware] {
+	return func(ctx *gofast.BuilderContext) *TimeoutMiddleware {
+		return NewTimeoutMiddleware(ctx)
+	}
+}
+
+func NewTimeoutMiddleware(ctx *gofast.BuilderContext) *TimeoutMiddleware {
+	return &TimeoutMiddleware{
+		Timeout: 30 * time.Second,
+	}
+}
+
+func (m *TimeoutMiddleware) Handle(next http.Handler) http.Handler {
+	return http.TimeoutHandler(next, m.Timeout, "Timeout")
 }

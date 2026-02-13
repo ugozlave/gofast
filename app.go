@@ -11,25 +11,24 @@ import (
 )
 
 type App struct {
-	config    Config[AppConfig]
+	config    *AppConfig
 	container *cargo.Container
 }
 
-func New(cfg Config[AppConfig]) *App {
+func New(cfg *AppConfig) *App {
 	ctn := cargo.New()
-	Register[Config[AppConfig]](&App{container: ctn}, func(*BuilderContext) Config[AppConfig] { return cfg })
-	Register[UniqueIDGenerator](&App{container: ctn}, func(*BuilderContext) UniqueIDGenerator { return &SequenceIDGenerator{} })
+	Register[UniqueIDGenerator](&App{container: ctn}, func(*BuilderContext) *SequenceIDGenerator { return &SequenceIDGenerator{} })
 	return &App{
-		config:    cfg,
+		config:    cfg.Default(),
 		container: ctn,
 	}
 }
 
 func (app *App) Run(ctx context.Context) {
 
-	cfg := app.config.Value()
+	cfg := app.config
 
-	ctx = context.WithValue(ctx, CtxApplicationName, cfg.Name)
+	ctx = context.WithValue(ctx, CtxName, cfg.Name)
 	ctx = context.WithValue(ctx, CtxEnvironment, cfg.Env)
 
 	ctn := app.container
@@ -74,22 +73,6 @@ func (app *App) Inspect() {
 	ctn.Inspect()
 	fmt.Println()
 	fmt.Println("Config:")
-	fmt.Printf(".   %v\n", app.config.Value())
+	fmt.Printf(".   %v\n", app.config)
 	fmt.Println()
-}
-
-type Settings struct {
-	DEBUG                  bool
-	CONFIG_FILE_NAME       string
-	CONFIG_FILE_EXT        string
-	CONFIG_APPLICATION_KEY string
-	ENV_PREFIX             string
-}
-
-var SETTINGS = &Settings{
-	DEBUG:                  true,
-	CONFIG_FILE_NAME:       "config",
-	CONFIG_FILE_EXT:        "json",
-	CONFIG_APPLICATION_KEY: "Application",
-	ENV_PREFIX:             "GOFAST",
 }

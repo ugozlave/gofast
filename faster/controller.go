@@ -13,7 +13,13 @@ import (
 type HealthController struct {
 }
 
-func NewHealthController(_ *gofast.BuilderContext) *HealthController {
+func HealthControllerBuilder() Builder[*HealthController] {
+	return func(ctx *gofast.BuilderContext) *HealthController {
+		return NewHealthController(ctx)
+	}
+}
+
+func NewHealthController(ctx *gofast.BuilderContext) *HealthController {
 	return &HealthController{}
 }
 

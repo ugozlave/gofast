@@ -32,11 +32,19 @@ go get github.com/ugozlave/gofast
 ```go
 package main
 
-import "github.com/ugozlave/gofast/faster"
+import (
+  "context"
+  "os"
+	"os/signal"
+
+  "github.com/ugozlave/gofast/faster"
+)
 
 func main() {
+  ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
 	app := faster.New()
-	app.Run()
+	app.Run(ctx)
 }
 ```
 
