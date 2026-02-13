@@ -10,6 +10,10 @@ import (
 	"github.com/ugozlave/gofast"
 )
 
+type ConfigProvider[T any] interface {
+	Value() T
+}
+
 /*
 ** Config
  */
@@ -18,21 +22,27 @@ type Config[T any] struct {
 	value T
 }
 
+func NewConfigBuilder[T any](v T, keys ...string) Builder[*Config[T]] {
+	return func(*gofast.BuilderContext) *Config[T] {
+		return NewConfig(v, keys...)
+	}
+}
+
 func NewConfig[T any](v T, keys ...string) *Config[T] {
 	base := struct {
 		Env string `json:"Environment"`
 	}{}
-	data, err := os.ReadFile(gofast.SETTINGS.CONFIG_FILE_NAME + "." + gofast.SETTINGS.CONFIG_FILE_EXT)
+	data, err := os.ReadFile(CONFIG.FILE_NAME + "." + CONFIG.FILE_EXT)
 	if err == nil {
-		_ = GetNestedConfig(data, &base, gofast.SETTINGS.CONFIG_APPLICATION_KEY)
+		_ = GetNestedConfig(data, &base, CONFIG.APPLICATION_PATH)
 		_ = GetNestedConfig(data, &v, keys...)
 	}
-	data, err = ReadEnv(gofast.SETTINGS.ENV_PREFIX)
+	data, err = ReadEnv(CONFIG.ENV_PREFIX)
 	if err == nil {
-		_ = GetNestedConfig(data, &base, gofast.SETTINGS.CONFIG_APPLICATION_KEY)
+		_ = GetNestedConfig(data, &base, CONFIG.APPLICATION_PATH)
 	}
 	if base.Env != "" {
-		data, err := os.ReadFile(gofast.SETTINGS.CONFIG_FILE_NAME + "." + base.Env + "." + gofast.SETTINGS.CONFIG_FILE_EXT)
+		data, err := os.ReadFile(CONFIG.FILE_NAME + "." + base.Env + "." + CONFIG.FILE_EXT)
 		if err == nil {
 			_ = GetNestedConfig(data, &v, keys...)
 		}
@@ -120,12 +130,30 @@ func ReadEnv(prefix string) ([]byte, error) {
 ** AppConfig
  */
 
-func NewAppConfig() *Config[gofast.AppConfig] {
+func NewAppConfig() *gofast.AppConfig {
 	var v gofast.AppConfig
 	v.Name = "gofast"
 	v.Env = "development"
-	v.Log.Level = "debug"
 	v.Server.Host = ""
 	v.Server.Port = 8080
-	return NewConfig(v, gofast.SETTINGS.CONFIG_APPLICATION_KEY)
+	v = NewConfig(v, CONFIG.APPLICATION_PATH).Value()
+	return &v
+}
+
+/*
+** Settings
+ */
+
+type ConfigSettings struct {
+	FILE_NAME        string
+	FILE_EXT         string
+	APPLICATION_PATH string
+	ENV_PREFIX       string
+}
+
+var CONFIG = &ConfigSettings{
+	FILE_NAME:        "config",
+	FILE_EXT:         "json",
+	APPLICATION_PATH: "Application",
+	ENV_PREFIX:       "GOFAST",
 }

@@ -40,24 +40,16 @@ func Use[M Middleware](app *App, builder func(*BuilderContext) M) {
 	Register[Middleware](app, builder)
 }
 
-func Log[L Logger](app *App, builder func(*BuilderContext) L) {
-	Register[Logger](app, builder)
-}
-
-func Cfg[C Config[T], T any](app *App, builder func(*BuilderContext) C) {
-	Register[Config[T]](app, builder)
-}
-
 func Get[T any](ctx *BuilderContext, lt Lifetime) T {
 	ctn := ctx.container
 	key := From[T]()
 	var v T
 	switch lt {
 	case Singleton:
-		name := ctx.ApplicationName()
+		name := ctx.Name()
 		v = ctn.MustGet(key.String(), fmt.Sprintf(ScopeApplicationKeyFormat, name), ctx).(T)
 	case Scoped:
-		scope := ctx.RequestId()
+		scope := ctx.RequestID()
 		v = ctn.MustGet(key.String(), fmt.Sprintf(ScopeRequestKeyFormat, scope), ctx).(T)
 	case Transient:
 		v = ctn.MustBuild(key.String(), ctx).(T)
@@ -71,10 +63,10 @@ func MustGet[T any](ctx *BuilderContext, lt Lifetime) T {
 	var v T
 	switch lt {
 	case Singleton:
-		name := ctx.ApplicationName()
+		name := ctx.Name()
 		v = ctn.MustGet(key.String(), fmt.Sprintf(ScopeApplicationKeyFormat, name), ctx).(T)
 	case Scoped:
-		scope := ctx.RequestId()
+		scope := ctx.RequestID()
 		v = ctn.MustGet(key.String(), fmt.Sprintf(ScopeRequestKeyFormat, scope), ctx).(T)
 	case Transient:
 		v = ctn.MustBuild(key.String(), ctx).(T)
@@ -85,44 +77,16 @@ func MustGet[T any](ctx *BuilderContext, lt Lifetime) T {
 	return v
 }
 
-func GetLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
-	logger := Get[Logger](ctx, lt).With(LogService, From[S]())
-	switch lt {
-	case Scoped:
-		return logger.With(LogRequestId, ctx.RequestId())
-	default:
-		return logger
-	}
-}
-
-func MustGetLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
-	logger := MustGet[Logger](ctx, lt).With(LogService, From[S]())
-	switch lt {
-	case Scoped:
-		return logger.With(LogRequestId, ctx.RequestId())
-	default:
-		return logger
-	}
-}
-
-func GetConfig[C any](ctx *BuilderContext, lt Lifetime) Config[C] {
-	return Get[Config[C]](ctx, lt)
-}
-
-func MustGetConfig[C any](ctx *BuilderContext, lt Lifetime) Config[C] {
-	return MustGet[Config[C]](ctx, lt)
-}
-
 func All[T any](ctx *BuilderContext, lt Lifetime) []T {
 	ctn := ctx.container
 	key := From[T]()
 	var instances []any
 	switch lt {
 	case Singleton:
-		name := ctx.ApplicationName()
+		name := ctx.Name()
 		instances = ctn.Gets(key.String(), fmt.Sprintf(ScopeApplicationKeyFormat, name), ctx)
 	case Scoped:
-		scope := ctx.RequestId()
+		scope := ctx.RequestID()
 		instances = ctn.Gets(key.String(), fmt.Sprintf(ScopeRequestKeyFormat, scope), ctx)
 	case Transient:
 		instances = ctn.Builds(key.String(), ctx)
