@@ -5,5 +5,5 @@ type Settings struct {
 }
 
 var SETTINGS = &Settings{
-	DEBUG: true,
+	DEBUG: false,
 }

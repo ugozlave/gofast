@@ -36,20 +36,43 @@ type Logger interface {
 ** Logger
  */
 
-type StdLogger struct {
+type FastLogger struct {
 	logger *slog.Logger
 }
 
-func StdLoggerBuilder() Builder[*StdLogger] {
-	return func(ctx *gofast.BuilderContext) *StdLogger {
-		return NewStdLogger(ctx)
+type LoggerBuilderOptions struct {
+	Name string
+	Env  string
+}
+
+type LoggerBuilderOption func(*LoggerBuilderOptions)
+
+func WithApplicationName(name string) LoggerBuilderOption {
+	return func(opts *LoggerBuilderOptions) {
+		opts.Name = name
 	}
 }
 
-func NewStdLogger(ctx *gofast.BuilderContext) *StdLogger {
-	name, env := ctx.Name(), ctx.Environment()
+func WithEnvironment() LoggerBuilderOption {
+	return func(opts *LoggerBuilderOptions) {
+		opts.Env = Environment.Get()
+	}
+}
+
+func LoggerBuilder(opts ...LoggerBuilderOption) Builder[*FastLogger] {
+	cfg := NewConfig(LoggerConfig{}).Value()
+	opt := &LoggerBuilderOptions{}
+	for _, fn := range opts {
+		fn(opt)
+	}
+	return func(ctx *gofast.BuilderContext) *FastLogger {
+		return NewLogger(cfg.Level, opt.Name, opt.Env)
+	}
+}
+
+func NewLogger(lvl, name, env string) *FastLogger {
 	level := slog.LevelInfo
-	switch strings.ToLower("debug") {
+	switch strings.ToLower(lvl) {
 	case "debug", "dbg", "d":
 		level = slog.LevelDebug
 	case "info", "inf", "i":
@@ -74,31 +97,31 @@ func NewStdLogger(ctx *gofast.BuilderContext) *StdLogger {
 	if env != "" {
 		logger = logger.With(slog.String(LogEnvironment, env))
 	}
-	return &StdLogger{logger: logger}
+	return &FastLogger{logger: logger}
 }
 
-func (l *StdLogger) Dbg(msg string, args ...any) {
+func (l *FastLogger) Dbg(msg string, args ...any) {
 	l.logger.Debug(msg, args...)
 }
 
-func (l *StdLogger) Inf(msg string, args ...any) {
+func (l *FastLogger) Inf(msg string, args ...any) {
 	l.logger.Info(msg, args...)
 }
 
-func (l *StdLogger) Wrn(msg string, args ...any) {
+func (l *FastLogger) Wrn(msg string, args ...any) {
 	l.logger.Warn(msg, args...)
 }
 
-func (l *StdLogger) Err(msg string, args ...any) {
+func (l *FastLogger) Err(msg string, args ...any) {
 	l.logger.Error(msg, args...)
 }
 
-func (l *StdLogger) With(args ...any) Logger {
-	return &StdLogger{l.logger.With(args...)}
+func (l *FastLogger) With(args ...any) Logger {
+	return &FastLogger{logger: l.logger.With(args...)}
 }
 
-func (l *StdLogger) WithGroup(name string) Logger {
-	return &StdLogger{logger: l.logger.WithGroup(name)}
+func (l *FastLogger) WithGroup(name string) Logger {
+	return &FastLogger{logger: l.logger.WithGroup(name)}
 }
 
 /*
@@ -136,4 +159,16 @@ func (l *NullLogger) With(args ...any) Logger {
 
 func (l *NullLogger) WithGroup(name string) Logger {
 	return &NullLogger{}
+}
+
+/*
+** LoggerConfig
+ */
+
+type LoggerConfig struct {
+	Level string `json:"Level"`
+}
+
+func (c LoggerConfig) Path() []string {
+	return []string{"Logging"}
 }

@@ -14,6 +14,10 @@ type ConfigProvider[T any] interface {
 	Value() T
 }
 
+type ConfigResolver interface {
+	Path() []string
+}
+
 /*
 ** Config
  */
@@ -22,33 +26,27 @@ type Config[T any] struct {
 	value T
 }
 
-func NewConfigBuilder[T any](v T, keys ...string) Builder[*Config[T]] {
+func ConfigBuilder[T any](v T, keys ...string) Builder[*Config[T]] {
 	return func(*gofast.BuilderContext) *Config[T] {
 		return NewConfig(v, keys...)
 	}
 }
 
 func NewConfig[T any](v T, keys ...string) *Config[T] {
-	base := struct {
-		Env string `json:"Environment"`
-	}{}
+	if len(keys) == 0 {
+		if resolver, ok := any(v).(ConfigResolver); ok {
+			keys = resolver.Path()
+		}
+	}
 	data, err := os.ReadFile(CONFIG.FILE_NAME + "." + CONFIG.FILE_EXT)
 	if err == nil {
-		_ = GetNestedConfig(data, &base, CONFIG.APPLICATION_PATH)
 		_ = GetNestedConfig(data, &v, keys...)
 	}
-	data, err = ReadEnv(CONFIG.ENV_PREFIX)
-	if err == nil {
-		_ = GetNestedConfig(data, &base, CONFIG.APPLICATION_PATH)
-	}
-	if base.Env != "" {
-		data, err := os.ReadFile(CONFIG.FILE_NAME + "." + base.Env + "." + CONFIG.FILE_EXT)
+	if env := Environment.Get(); env != "" {
+		data, err := os.ReadFile(CONFIG.FILE_NAME + "." + env + "." + CONFIG.FILE_EXT)
 		if err == nil {
 			_ = GetNestedConfig(data, &v, keys...)
 		}
-	}
-	if err == nil {
-		_ = GetNestedConfig(data, &v, keys...)
 	}
 	return &Config[T]{value: v}
 }
@@ -133,10 +131,9 @@ func ReadEnv(prefix string) ([]byte, error) {
 func NewAppConfig() *gofast.AppConfig {
 	var v gofast.AppConfig
 	v.Name = "gofast"
-	v.Env = "development"
 	v.Server.Host = ""
 	v.Server.Port = 8080
-	v = NewConfig(v, CONFIG.APPLICATION_PATH).Value()
+	v = NewConfig(v, CONFIG.APPLICATION_PATH...).Value()
 	return &v
 }
 
@@ -147,13 +144,13 @@ func NewAppConfig() *gofast.AppConfig {
 type ConfigSettings struct {
 	FILE_NAME        string
 	FILE_EXT         string
-	APPLICATION_PATH string
+	APPLICATION_PATH []string
 	ENV_PREFIX       string
 }
 
 var CONFIG = &ConfigSettings{
 	FILE_NAME:        "config",
 	FILE_EXT:         "json",
-	APPLICATION_PATH: "Application",
+	APPLICATION_PATH: []string{},
 	ENV_PREFIX:       "GOFAST",
 }

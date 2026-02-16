@@ -24,13 +24,9 @@ type MemoryCache struct {
 
 func MemoryCacheBuilder() Builder[*MemoryCache] {
 	return func(ctx *gofast.BuilderContext) *MemoryCache {
-		return NewMemoryCache(ctx)
-	}
-}
-
-func NewMemoryCache(ctx *gofast.BuilderContext) *MemoryCache {
-	return &MemoryCache{
-		store: make(map[string]any),
+		return &MemoryCache{
+			store: make(map[string]any),
+		}
 	}
 }
 
