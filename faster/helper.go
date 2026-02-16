@@ -4,15 +4,18 @@ import (
 	"github.com/ugozlave/gofast"
 )
 
-func New() *gofast.App {
-	app := gofast.New(NewAppConfig())
+func New() (*gofast.App, *gofast.AppConfig) {
+	Environment.Read()
+	cfg := NewAppConfig()
+	app := gofast.New(cfg)
 	Add(app, HealthControllerBuilder())
 	Use(app, LogMiddlewareBuilder())
 	Use(app, RecoverMiddlewareBuilder())
 	Use(app, TimeoutMiddlewareBuilder())
-	Register[Logger](app, StdLoggerBuilder())
+	Use(app, BodyLimiterMiddlewareBuilder())
+	Register[Logger](app, LoggerBuilder(WithApplicationName(cfg.Name), WithEnvironment()))
 	Register[Cache](app, MemoryCacheBuilder())
-	return app
+	return app, cfg
 }
 
 func Register[K any, V any](app *gofast.App, builder func(*gofast.BuilderContext) V) {

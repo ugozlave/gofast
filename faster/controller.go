@@ -15,12 +15,8 @@ type HealthController struct {
 
 func HealthControllerBuilder() Builder[*HealthController] {
 	return func(ctx *gofast.BuilderContext) *HealthController {
-		return NewHealthController(ctx)
+		return &HealthController{}
 	}
-}
-
-func NewHealthController(ctx *gofast.BuilderContext) *HealthController {
-	return &HealthController{}
 }
 
 func (c *HealthController) Prefix() string {

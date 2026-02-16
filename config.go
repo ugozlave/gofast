@@ -8,7 +8,6 @@ import "os"
 
 type AppConfig struct {
 	Name   string `json:"Name"`
-	Env    string `json:"Environment"`
 	Server struct {
 		Host string `json:"Host"`
 		Port int    `json:"Port"`
@@ -22,9 +21,6 @@ func (c *AppConfig) Default() *AppConfig {
 			panic(err)
 		}
 		c.Name = name
-	}
-	if c.Env == "" {
-		c.Env = "development"
 	}
 	if c.Server.Port == 0 {
 		c.Server.Port = 8080

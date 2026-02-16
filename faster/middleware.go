@@ -10,6 +10,29 @@ import (
 )
 
 /*
+** BodyLimiterMiddleware
+ */
+
+type BodyLimiterMiddleware struct {
+	Limit int64
+}
+
+func BodyLimiterMiddlewareBuilder() Builder[*BodyLimiterMiddleware] {
+	return func(*gofast.BuilderContext) *BodyLimiterMiddleware {
+		return &BodyLimiterMiddleware{
+			Limit: 1 << 20, // 1MB
+		}
+	}
+}
+
+func (m *BodyLimiterMiddleware) Handle(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, m.Limit)
+		next.ServeHTTP(w, r)
+	})
+}
+
+/*
 ** LogMiddleware
  */
 
@@ -19,13 +42,9 @@ type LogMiddleware struct {
 
 func LogMiddlewareBuilder() Builder[*LogMiddleware] {
 	return func(ctx *gofast.BuilderContext) *LogMiddleware {
-		return NewLogMiddleware(ctx)
-	}
-}
-
-func NewLogMiddleware(ctx *gofast.BuilderContext) *LogMiddleware {
-	return &LogMiddleware{
-		logger: MustGetLogger[LogMiddleware](ctx, gofast.Scoped),
+		return &LogMiddleware{
+			logger: MustGetLogger[LogMiddleware](ctx, gofast.Scoped),
+		}
 	}
 }
 
@@ -42,9 +61,9 @@ func (m *LogMiddleware) Handle(next http.Handler) http.Handler {
 				LogRemote, r.RemoteAddr,
 				LogAgent, r.UserAgent(),
 			)
-		group.Inf("request received")
+		group.Dbg("request received")
 		defer func() {
-			group.Inf("request finished",
+			group.Dbg("request finished",
 				LogStatus, writer.status,
 				LogDuration, time.Since(t),
 			)
@@ -73,13 +92,9 @@ type RecoverMiddleware struct {
 
 func RecoverMiddlewareBuilder() Builder[*RecoverMiddleware] {
 	return func(ctx *gofast.BuilderContext) *RecoverMiddleware {
-		return NewRecoverMiddleware(ctx)
-	}
-}
-
-func NewRecoverMiddleware(ctx *gofast.BuilderContext) *RecoverMiddleware {
-	return &RecoverMiddleware{
-		logger: MustGetLogger[RecoverMiddleware](ctx, gofast.Scoped),
+		return &RecoverMiddleware{
+			logger: MustGetLogger[RecoverMiddleware](ctx, gofast.Scoped),
+		}
 	}
 }
 
@@ -109,13 +124,9 @@ type TimeoutMiddleware struct {
 
 func TimeoutMiddlewareBuilder() Builder[*TimeoutMiddleware] {
 	return func(ctx *gofast.BuilderContext) *TimeoutMiddleware {
-		return NewTimeoutMiddleware(ctx)
-	}
-}
-
-func NewTimeoutMiddleware(ctx *gofast.BuilderContext) *TimeoutMiddleware {
-	return &TimeoutMiddleware{
-		Timeout: 30 * time.Second,
+		return &TimeoutMiddleware{
+			Timeout: 30 * time.Second,
+		}
 	}
 }
 

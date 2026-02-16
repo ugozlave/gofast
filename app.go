@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -29,7 +30,6 @@ func (app *App) Run(ctx context.Context) {
 	cfg := app.config
 
 	ctx = context.WithValue(ctx, CtxName, cfg.Name)
-	ctx = context.WithValue(ctx, CtxEnvironment, cfg.Env)
 
 	ctn := app.container
 	defer ctn.Close()
@@ -37,8 +37,9 @@ func (app *App) Run(ctx context.Context) {
 
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	server := http.Server{
-		Addr:    addr,
-		Handler: NewHttpInjector(ctn, ctx).Handler(),
+		Addr:        addr,
+		Handler:     NewHttpInjector(ctn).Handler(),
+		BaseContext: func(net.Listener) context.Context { return ctx },
 	}
 
 	if SETTINGS.DEBUG {
