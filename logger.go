@@ -1,16 +1,15 @@
-package faster
+package gofast
 
 import (
 	"log/slog"
 	"os"
 	"strings"
-
-	"github.com/ugozlave/gofast"
 )
 
 const (
 	LogApplication string = "application"
 	LogEnvironment string = "environment"
+	LogHostname    string = "hostname"
 	LogService     string = "service"
 	LogRequestId   string = "requestId"
 	LogHttp        string = "http"
@@ -41,63 +40,49 @@ type FastLogger struct {
 }
 
 type LoggerBuilderOptions struct {
-	Name string
-	Env  string
+	Name     string
+	Env      string
+	Hostname string
 }
 
-type LoggerBuilderOption func(*LoggerBuilderOptions)
-
-func WithApplicationName(name string) LoggerBuilderOption {
-	return func(opts *LoggerBuilderOptions) {
-		opts.Name = name
+func LoggerBuilder() Builder[*FastLogger] {
+	return func(ctx *BuilderContext) *FastLogger {
+		cfg := MustGetConfig[LoggerConfig](ctx, Singleton)
+		env := Environment.Get()
+		hostname, _ := os.Hostname()
+		name := ctx.Name()
+		level := slog.LevelInfo
+		switch strings.ToLower(cfg.Value().Level) {
+		case "debug", "dbg", "d":
+			level = slog.LevelDebug
+		case "info", "inf", "i":
+			level = slog.LevelInfo
+		case "warning", "warn", "wrn", "w":
+			level = slog.LevelWarn
+		case "error", "err", "e":
+			level = slog.LevelError
+		default:
+			level = slog.LevelInfo
+		}
+		handler := slog.NewTextHandler(
+			os.Stdout,
+			&slog.HandlerOptions{
+				Level: level,
+			},
+		)
+		logger := slog.New(handler)
+		attrs := make([]any, 0, 3)
+		if name != "" {
+			attrs = append(attrs, slog.String(LogApplication, name))
+		}
+		if env != "" {
+			attrs = append(attrs, slog.String(LogEnvironment, env))
+		}
+		if hostname != "" {
+			attrs = append(attrs, slog.String(LogHostname, hostname))
+		}
+		return &FastLogger{logger: logger.With(attrs...)}
 	}
-}
-
-func WithEnvironment() LoggerBuilderOption {
-	return func(opts *LoggerBuilderOptions) {
-		opts.Env = Environment.Get()
-	}
-}
-
-func LoggerBuilder(opts ...LoggerBuilderOption) Builder[*FastLogger] {
-	cfg := NewConfig(LoggerConfig{}).Value()
-	opt := &LoggerBuilderOptions{}
-	for _, fn := range opts {
-		fn(opt)
-	}
-	return func(ctx *gofast.BuilderContext) *FastLogger {
-		return NewLogger(cfg.Level, opt.Name, opt.Env)
-	}
-}
-
-func NewLogger(lvl, name, env string) *FastLogger {
-	level := slog.LevelInfo
-	switch strings.ToLower(lvl) {
-	case "debug", "dbg", "d":
-		level = slog.LevelDebug
-	case "info", "inf", "i":
-		level = slog.LevelInfo
-	case "warning", "warn", "wrn", "w":
-		level = slog.LevelWarn
-	case "error", "err", "e":
-		level = slog.LevelError
-	default:
-		level = slog.LevelInfo
-	}
-	handler := slog.NewTextHandler(
-		os.Stdout,
-		&slog.HandlerOptions{
-			Level: level,
-		},
-	)
-	logger := slog.New(handler)
-	if name != "" {
-		logger = logger.With(slog.String(LogApplication, name))
-	}
-	if env != "" {
-		logger = logger.With(slog.String(LogEnvironment, env))
-	}
-	return &FastLogger{logger: logger}
 }
 
 func (l *FastLogger) Dbg(msg string, args ...any) {
@@ -132,13 +117,9 @@ type NullLogger struct {
 }
 
 func NullLoggerBuilder() Builder[*NullLogger] {
-	return func(ctx *gofast.BuilderContext) *NullLogger {
-		return NewNullLogger(ctx)
+	return func(ctx *BuilderContext) *NullLogger {
+		return &NullLogger{}
 	}
-}
-
-func NewNullLogger(ctx *gofast.BuilderContext) *NullLogger {
-	return &NullLogger{}
 }
 
 func (l *NullLogger) Dbg(msg string, args ...any) {

@@ -37,35 +37,35 @@ import (
   "os"
 	"os/signal"
 
-  "github.com/ugozlave/gofast/faster"
+  "github.com/ugozlave/gofast"
 )
 
 func main() {
   ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	app, _ := faster.New()
+	app, _ := gofast.New() // ← default configuration included
 	app.Run(ctx)
 }
 ```
 
 This minimal example starts a default web API application using the built-in HTTP server.
 
-## Faster: Built-in Utilities for `gofast`
+## Built-in Utilities
 
-The `faster` package provides a ready-to-use set of common utilities that integrate seamlessly with `gofast`. It is designed to help you get started quickly while keeping full compatibility with the core framework's extensibility.
+It is designed to help you get started quickly while keeping full compatibility with the core framework's extensibility.
 
 #### Features
 
-- **Config Provider**  
-  A flexible configuration system that loads values from json configuration files and overrides them with environment-specific files and environment variables.  
+- **Config**  
+  A flexible configuration system that loads values from json configuration files and overrides them with environment-specific files and environment variables.
   Implements the core `Config` interface out of the box.
 
 - **Structured Logger**  
-  A simple structured logger based on `log/slog` package.  
+  A simple structured logger based on `log/slog` package.
   Implements the core `Logger` interface.
 
 - **Health Controller**  
-  A pre-built health check controller exposing a `/health` endpoint that returns `OK` when the application is running.  
+  A pre-built health check controller exposing a `/health` endpoint that returns `OK` when the application is running.
   Ready to register with a single line.
 
 - **Logging Middleware**  
@@ -73,6 +73,12 @@ The `faster` package provides a ready-to-use set of common utilities that integr
 
 - **Recovery Middleware**  
   Catches panics in handlers or middlewares, logs the stack trace, and returns a clean `500 Internal Server Error` response without crashing the server.
+
+- **Timeout Middleware**  
+  Ensures that requests do not run longer than a configurable timeout.
+
+- **Body Limiter Middleware**  
+  Restricts the maximum size of incoming request bodies to prevent resource exhaustion and denial-of-service attacks.
 
 ## Examples
 

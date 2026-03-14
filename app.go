@@ -16,9 +16,8 @@ type App struct {
 	container *cargo.Container
 }
 
-func New(cfg *AppConfig) *App {
+func Empty(cfg *AppConfig) *App {
 	ctn := cargo.New()
-	Register[UniqueIDGenerator](&App{container: ctn}, func(*BuilderContext) *SequenceIDGenerator { return &SequenceIDGenerator{} })
 	return &App{
 		config:    cfg.Default(),
 		container: ctn,
@@ -33,12 +32,13 @@ func (app *App) Run(ctx context.Context) {
 
 	ctn := app.container
 	defer ctn.Close()
+
 	ctn.CreateScope(fmt.Sprintf(ScopeApplicationKeyFormat, cfg.Name))
 
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	server := http.Server{
 		Addr:        addr,
-		Handler:     NewHttpInjector(ctn).Handler(),
+		Handler:     &HttpInjector{ctn: ctn, gen: MustGet[UniqueIDGenerator](NewBuilderContext(context.TODO(), ctn), Transient)},
 		BaseContext: func(net.Listener) context.Context { return ctx },
 	}
 
