@@ -1,9 +1,7 @@
-package faster
+package gofast
 
 import (
 	"sync"
-
-	"github.com/ugozlave/gofast"
 )
 
 type Cache interface {
@@ -23,7 +21,7 @@ type MemoryCache struct {
 }
 
 func MemoryCacheBuilder() Builder[*MemoryCache] {
-	return func(ctx *gofast.BuilderContext) *MemoryCache {
+	return func(ctx *BuilderContext) *MemoryCache {
 		return &MemoryCache{
 			store: make(map[string]any),
 		}

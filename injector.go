@@ -11,54 +11,42 @@ import (
 	"github.com/ugozlave/cargo"
 )
 
-type Injector interface {
-	Handler() http.Handler
-}
-
 type HttpInjector struct {
 	ctn *cargo.Container
+	gen UniqueIDGenerator
 }
 
-func NewHttpInjector(ctn *cargo.Container) *HttpInjector {
-	return &HttpInjector{
-		ctn: ctn,
-	}
-}
+func (inj *HttpInjector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// create unique request ID
+	id := inj.gen.Next()
 
-func (inj *HttpInjector) Handler() http.Handler {
-	gen := Get[UniqueIDGenerator](NewBuilderContext(context.Background(), inj.ctn), Transient)
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// create unique request ID
-		id := gen.Next()
+	// create unique scope for the request
+	scope := fmt.Sprintf(ScopeRequestKeyFormat, id)
+	inj.ctn.CreateScope(scope)
+	defer func() {
+		inj.ctn.DeleteScope(scope)
+	}()
 
-		// create unique scope for the request
-		scope := fmt.Sprintf(ScopeRequestKeyFormat, id)
-		inj.ctn.CreateScope(scope)
-		defer func() {
-			inj.ctn.DeleteScope(scope)
-		}()
+	// create a new builder context
+	ctx := NewBuilderContext(context.WithValue(r.Context(), CtxRequestId, id), inj.ctn)
 
-		// create a new builder context
-		ctx := NewBuilderContext(context.WithValue(r.Context(), CtxRequestId, id), inj.ctn)
+	// build controllers
+	handler := inj.Controllers(ctx)
 
-		// build controllers
-		handler := inj.Controllers(ctx)
+	// build middlewares
+	use := inj.Middlewares(ctx)
 
-		// build middlewares
-		use := inj.Middlewares(ctx)
+	mux := use(handler)
 
-		mux := use(handler)
-
-		mux.ServeHTTP(w, r.WithContext(ctx))
-	})
+	mux.ServeHTTP(w, r.WithContext(ctx))
 }
 
 func (inj *HttpInjector) Controllers(ctx *BuilderContext) http.Handler {
 	mux := http.NewServeMux()
 	for _, ctrl := range All[Controller](ctx, Scoped) {
 		prefix := strings.Trim(ctrl.Prefix(), "/")
-		mux.Handle("/"+prefix, StripPrefix("/"+prefix, ctrl.Routes()))
-		mux.Handle("/"+prefix+"/", StripPrefix("/"+prefix, ctrl.Routes()))
+		mux.Handle("/"+prefix, strip_prefix("/"+prefix, ctrl.Routes()))
+		mux.Handle("/"+prefix+"/", strip_prefix("/"+prefix, ctrl.Routes()))
 	}
 	return mux
 }
@@ -72,7 +60,7 @@ func (inj *HttpInjector) Middlewares(ctx *BuilderContext) func(http.Handler) htt
 	}
 }
 
-func StripPrefix(prefix string, h http.Handler) http.Handler {
+func strip_prefix(prefix string, h http.Handler) http.Handler {
 	if prefix == "" {
 		return h
 	}

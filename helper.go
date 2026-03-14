@@ -40,6 +40,10 @@ func Use[M Middleware](app *App, builder func(*BuilderContext) M) {
 	Register[Middleware](app, builder)
 }
 
+func Cfg[C Config[T], T any](app *App, builder func(*BuilderContext) C) {
+	Register[Config[T]](app, builder)
+}
+
 func Get[T any](ctx *BuilderContext, lt Lifetime) T {
 	ctn := ctx.container
 	key := From[T]()
@@ -77,6 +81,34 @@ func MustGet[T any](ctx *BuilderContext, lt Lifetime) T {
 	return v
 }
 
+func GetLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
+	logger := Get[Logger](ctx, lt).With(LogService, From[S]())
+	switch lt {
+	case Scoped:
+		return logger.With(LogRequestId, ctx.RequestID())
+	default:
+		return logger
+	}
+}
+
+func MustGetLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
+	logger := MustGet[Logger](ctx, lt).With(LogService, From[S]())
+	switch lt {
+	case Scoped:
+		return logger.With(LogRequestId, ctx.RequestID())
+	default:
+		return logger
+	}
+}
+
+func GetConfig[C any](ctx *BuilderContext, lt Lifetime) Config[C] {
+	return Get[Config[C]](ctx, lt)
+}
+
+func MustGetConfig[C any](ctx *BuilderContext, lt Lifetime) Config[C] {
+	return MustGet[Config[C]](ctx, lt)
+}
+
 func All[T any](ctx *BuilderContext, lt Lifetime) []T {
 	ctn := ctx.container
 	key := From[T]()
@@ -100,4 +132,25 @@ func All[T any](ctx *BuilderContext, lt Lifetime) []T {
 
 func From[T any]() reflect.Type {
 	return reflect.TypeOf((*T)(nil)).Elem()
+}
+
+type Builder[T any] func(*BuilderContext) T
+
+func New() (*App, AppConfig) {
+	Environment.Read()
+	ConfigFiles.Add("config.json")
+	ConfigFiles.Add("config." + Environment.Get() + ".json")
+	ConfigFiles.Env(true)
+	cfg := NewConfig(AppConfig{Name: "gofast"}, CONFIG.APPLICATION_PATH...).Value()
+	app := Empty(&cfg)
+	Cfg(app, ConfigBuilder(LoggerConfig{Level: "info"}))
+	Add(app, HealthControllerBuilder())
+	Use(app, LogMiddlewareBuilder())
+	Use(app, RecoverMiddlewareBuilder())
+	Use(app, TimeoutMiddlewareBuilder())
+	Use(app, BodyLimiterMiddlewareBuilder())
+	Register[UniqueIDGenerator](app, SequenceIDGeneratorBuilder())
+	Register[Logger](app, LoggerBuilder())
+	Register[Cache](app, MemoryCacheBuilder())
+	return app, cfg
 }

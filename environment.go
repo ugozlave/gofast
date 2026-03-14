@@ -1,6 +1,12 @@
-package faster
+package gofast
 
-import "os"
+import (
+	"os"
+)
+
+/*
+** EnvironmentHelper
+ */
 
 type EnvironmentHelper struct {
 	value string
