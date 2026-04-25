@@ -1,6 +1,8 @@
 package gofast
 
 import (
+	"context"
+	"io"
 	"log/slog"
 	"os"
 	"strings"
@@ -24,9 +26,13 @@ const (
 
 type Logger interface {
 	Dbg(msg string, args ...any)
+	DbgCtx(ctx context.Context, msg string, args ...any)
 	Inf(msg string, args ...any)
+	InfCtx(ctx context.Context, msg string, args ...any)
 	Wrn(msg string, args ...any)
+	WrnCtx(ctx context.Context, msg string, args ...any)
 	Err(msg string, args ...any)
+	ErrCtx(ctx context.Context, msg string, args ...any)
 	With(args ...any) Logger
 	WithGroup(name string) Logger
 }
@@ -47,12 +53,12 @@ type LoggerBuilderOptions struct {
 
 func LoggerBuilder() Builder[*FastLogger] {
 	return func(ctx *BuilderContext) *FastLogger {
-		cfg := MustGetConfig[LoggerConfig](ctx, Singleton)
+		cfg := MustGetConfig[LoggerConfig](ctx, Singleton).Value()
 		env := Environment.Get()
 		hostname, _ := os.Hostname()
 		name := ctx.Name()
 		level := slog.LevelInfo
-		switch strings.ToLower(cfg.Value().Level) {
+		switch strings.ToLower(cfg.Level) {
 		case "debug", "dbg", "d":
 			level = slog.LevelDebug
 		case "info", "inf", "i":
@@ -64,12 +70,23 @@ func LoggerBuilder() Builder[*FastLogger] {
 		default:
 			level = slog.LevelInfo
 		}
-		handler := slog.NewTextHandler(
-			os.Stdout,
-			&slog.HandlerOptions{
-				Level: level,
-			},
-		)
+		handlerOpts := slog.HandlerOptions{
+			Level: level,
+		}
+		var writer io.Writer
+		switch cfg.Discard {
+		case true:
+			writer = io.Discard
+		default:
+			writer = os.Stdout
+		}
+		var handler slog.Handler
+		switch cfg.Human {
+		case true:
+			handler = slog.NewTextHandler(writer, &handlerOpts)
+		default:
+			handler = slog.NewJSONHandler(writer, &handlerOpts)
+		}
 		logger := slog.New(handler)
 		attrs := make([]any, 0, 3)
 		if name != "" {
@@ -89,16 +106,32 @@ func (l *FastLogger) Dbg(msg string, args ...any) {
 	l.logger.Debug(msg, args...)
 }
 
+func (l *FastLogger) DbgCtx(ctx context.Context, msg string, args ...any) {
+	l.logger.DebugContext(ctx, msg, args...)
+}
+
 func (l *FastLogger) Inf(msg string, args ...any) {
 	l.logger.Info(msg, args...)
+}
+
+func (l *FastLogger) InfCtx(ctx context.Context, msg string, args ...any) {
+	l.logger.InfoContext(ctx, msg, args...)
 }
 
 func (l *FastLogger) Wrn(msg string, args ...any) {
 	l.logger.Warn(msg, args...)
 }
 
+func (l *FastLogger) WrnCtx(ctx context.Context, msg string, args ...any) {
+	l.logger.WarnContext(ctx, msg, args...)
+}
+
 func (l *FastLogger) Err(msg string, args ...any) {
 	l.logger.Error(msg, args...)
+}
+
+func (l *FastLogger) ErrCtx(ctx context.Context, msg string, args ...any) {
+	l.logger.ErrorContext(ctx, msg, args...)
 }
 
 func (l *FastLogger) With(args ...any) Logger {
@@ -110,44 +143,13 @@ func (l *FastLogger) WithGroup(name string) Logger {
 }
 
 /*
-** NullLogger
- */
-
-type NullLogger struct {
-}
-
-func NullLoggerBuilder() Builder[*NullLogger] {
-	return func(ctx *BuilderContext) *NullLogger {
-		return &NullLogger{}
-	}
-}
-
-func (l *NullLogger) Dbg(msg string, args ...any) {
-}
-
-func (l *NullLogger) Inf(msg string, args ...any) {
-}
-
-func (l *NullLogger) Wrn(msg string, args ...any) {
-}
-
-func (l *NullLogger) Err(msg string, args ...any) {
-}
-
-func (l *NullLogger) With(args ...any) Logger {
-	return &NullLogger{}
-}
-
-func (l *NullLogger) WithGroup(name string) Logger {
-	return &NullLogger{}
-}
-
-/*
 ** LoggerConfig
  */
 
 type LoggerConfig struct {
-	Level string `json:"Level"`
+	Level   string `json:"Level"`
+	Human   bool   `json:"Human"`
+	Discard bool   `json:"Discard"`
 }
 
 func (c LoggerConfig) Path() []string {
