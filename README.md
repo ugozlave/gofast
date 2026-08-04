@@ -35,16 +35,16 @@ package main
 import (
   "context"
   "os"
-	"os/signal"
+  "os/signal"
 
   "github.com/ugozlave/gofast"
 )
 
 func main() {
   ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
-	app, _ := gofast.New() // ← default configuration included
-	app.Run(ctx)
+  defer stop()
+  app, _ := gofast.New() // ← default configuration included
+  app.Run(ctx)
 }
 ```
 
