@@ -82,7 +82,7 @@ func MustGet[T any](ctx *BuilderContext, lt Lifetime) T {
 }
 
 func GetLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
-	logger := Get[Logger](ctx, lt).With(LogService, From[S]())
+	logger := Get[Logger](ctx, lt).With(LogService, From[S]().String())
 	switch lt {
 	case Scoped:
 		return logger.With(LogRequestId, ctx.RequestID())
@@ -92,7 +92,7 @@ func GetLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
 }
 
 func MustGetLogger[S any](ctx *BuilderContext, lt Lifetime) Logger {
-	logger := MustGet[Logger](ctx, lt).With(LogService, From[S]())
+	logger := MustGet[Logger](ctx, lt).With(LogService, From[S]().String())
 	switch lt {
 	case Scoped:
 		return logger.With(LogRequestId, ctx.RequestID())
@@ -131,7 +131,7 @@ func All[T any](ctx *BuilderContext, lt Lifetime) []T {
 }
 
 func From[T any]() reflect.Type {
-	return reflect.TypeOf((*T)(nil)).Elem()
+	return reflect.TypeFor[T]()
 }
 
 type Builder[T any] func(*BuilderContext) T
