@@ -45,7 +45,7 @@ type LogMiddleware struct {
 func LogMiddlewareBuilder() Builder[*LogMiddleware] {
 	return func(ctx *BuilderContext) *LogMiddleware {
 		return &LogMiddleware{
-			logger: MustGetLogger[LogMiddleware](ctx, Scoped),
+			logger: ctx.MustGetLogger[LogMiddleware](Scoped),
 		}
 	}
 }
@@ -95,7 +95,7 @@ type RecoverMiddleware struct {
 func RecoverMiddlewareBuilder() Builder[*RecoverMiddleware] {
 	return func(ctx *BuilderContext) *RecoverMiddleware {
 		return &RecoverMiddleware{
-			logger: MustGetLogger[RecoverMiddleware](ctx, Scoped),
+			logger: ctx.MustGetLogger[RecoverMiddleware](Scoped),
 		}
 	}
 }

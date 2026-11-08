@@ -3,6 +3,7 @@ package gofast
 import (
 	"fmt"
 	"sync/atomic"
+	"uuid"
 )
 
 type UniqueIDGenerator interface {
@@ -14,7 +15,7 @@ type UniqueIDGenerator interface {
  */
 
 type SequenceIDGenerator struct {
-	current int64
+	current atomic.Int64
 }
 
 func SequenceIDGeneratorBuilder() Builder[*SequenceIDGenerator] {
@@ -24,6 +25,23 @@ func SequenceIDGeneratorBuilder() Builder[*SequenceIDGenerator] {
 }
 
 func (g *SequenceIDGenerator) Next() string {
-	id := atomic.AddInt64(&g.current, 1)
+	id := g.current.Add(1)
 	return fmt.Sprintf("%d", id)
+}
+
+/*
+** UUIDGenerator
+ */
+
+type UUIDGenerator struct {
+}
+
+func UUIDGeneratorBuilder() Builder[*UUIDGenerator] {
+	return func(ctx *BuilderContext) *UUIDGenerator {
+		return &UUIDGenerator{}
+	}
+}
+
+func (g *UUIDGenerator) Next() string {
+	return uuid.New().String()
 }

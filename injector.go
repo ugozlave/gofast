@@ -43,7 +43,7 @@ func (inj *HttpInjector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (inj *HttpInjector) Controllers(ctx *BuilderContext) http.Handler {
 	mux := http.NewServeMux()
-	for _, ctrl := range All[Controller](ctx, Scoped) {
+	for _, ctrl := range ctx.All[Controller](Scoped) {
 		prefix := strings.Trim(ctrl.Prefix(), "/")
 		mux.Handle("/"+prefix, strip_prefix("/"+prefix, ctrl.Routes()))
 		mux.Handle("/"+prefix+"/", strip_prefix("/"+prefix, ctrl.Routes()))
@@ -53,7 +53,7 @@ func (inj *HttpInjector) Controllers(ctx *BuilderContext) http.Handler {
 
 func (inj *HttpInjector) Middlewares(ctx *BuilderContext) func(http.Handler) http.Handler {
 	return func(mux http.Handler) http.Handler {
-		for _, mid := range slices.Backward(All[Middleware](ctx, Scoped)) {
+		for _, mid := range slices.Backward(ctx.All[Middleware](Scoped)) {
 			mux = mid.Handle(mux)
 		}
 		return mux
