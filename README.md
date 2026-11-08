@@ -19,7 +19,8 @@ Perfect for building modern REST APIs, scalable web services, or microservices, 
 
 ### Prerequisites
 
-`gofast` requires [Go](https://go.dev/) version [1.24](https://go.dev/doc/devel/release#go1.24) or above.
+`gofast` requires [Go](https://go.dev/) version [1.27](https://go.dev/doc/devel/release#go1.27.0) or above.
+
 
 ## Installation
 
