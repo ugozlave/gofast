@@ -53,7 +53,7 @@ type LoggerBuilderOptions struct {
 
 func LoggerBuilder() Builder[*FastLogger] {
 	return func(ctx *BuilderContext) *FastLogger {
-		cfg := MustGetConfig[LoggerConfig](ctx, Singleton).Value()
+		cfg := ctx.MustGetConfig[LoggerConfig](Singleton).Value()
 		env := Environment.Get()
 		hostname, _ := os.Hostname()
 		name := ctx.Name()

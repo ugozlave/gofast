@@ -77,3 +77,19 @@ func (app *App) Inspect() {
 	fmt.Printf(".   %v\n", app.config)
 	fmt.Println()
 }
+
+func (app *App) Register[K any, V any](builder func(*BuilderContext) V) {
+	Register[K](app, builder)
+}
+
+func (app *App) Add[C Controller](builder func(*BuilderContext) C) {
+	Add(app, builder)
+}
+
+func (app *App) Use[M Middleware](builder func(*BuilderContext) M) {
+	Use(app, builder)
+}
+
+func (app *App) Cfg[C Config[T], T any](builder func(*BuilderContext) C) {
+	Cfg(app, builder)
+}

@@ -40,3 +40,31 @@ func (c *BuilderContext) RequestID() string {
 	}
 	return v
 }
+
+func (c *BuilderContext) Get[T any](lt Lifetime) T {
+	return Get[T](c, lt)
+}
+
+func (c *BuilderContext) MustGet[T any](lt Lifetime) T {
+	return MustGet[T](c, lt)
+}
+
+func (c *BuilderContext) GetLogger[S any](lt Lifetime) Logger {
+	return GetLogger[S](c, lt)
+}
+
+func (c *BuilderContext) MustGetLogger[S any](lt Lifetime) Logger {
+	return MustGetLogger[S](c, lt)
+}
+
+func (c *BuilderContext) GetConfig[C any](lt Lifetime) Config[C] {
+	return GetConfig[C](c, lt)
+}
+
+func (c *BuilderContext) MustGetConfig[C any](lt Lifetime) Config[C] {
+	return MustGetConfig[C](c, lt)
+}
+
+func (c *BuilderContext) All[T any](lt Lifetime) []T {
+	return All[T](c, lt)
+}

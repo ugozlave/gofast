@@ -21,7 +21,7 @@ type HealthController struct {
 func HealthControllerBuilder() Builder[*HealthController] {
 	return func(ctx *BuilderContext) *HealthController {
 		return &HealthController{
-			Services: All[HealthChecker](ctx, Scoped),
+			Services: ctx.All[HealthChecker](Scoped),
 		}
 	}
 }
